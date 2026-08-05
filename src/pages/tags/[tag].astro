@@ -1,15 +1,17 @@
 ---
 // ============================================================
 // 按标签筛选文章列表页 - 动态路由 [tag]
+// 标签隔离：普通模式只显示普通文章+标签，黑客模式只显示黑客文章+标签
 // ============================================================
 import BaseLayout from '@layouts/BaseLayout.astro';
 import PostCard from '@components/PostCard.astro';
-import TagList from '@components/TagList.astro';
 
 export async function getStaticPaths() {
-  const posts = await Astro.glob('../../content/posts/*.md');
+  const normalPosts = await Astro.glob('../../content/posts/*.md');
+  const hackerPosts = await Astro.glob('../../content/hacker-posts/*.md');
+  const allPosts = [...normalPosts, ...hackerPosts];
   const tagSet = new Set<string>();
-  posts.forEach(post => {
+  allPosts.forEach(post => {
     const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
     tags.forEach((tag: string) => tagSet.add(tag));
   });
@@ -21,10 +23,11 @@ export async function getStaticPaths() {
 
 const { tag } = Astro.props;
 
-const posts = await Astro.glob('../../content/posts/*.md');
+const normalPosts = await Astro.glob('../../content/posts/*.md');
+const hackerPosts = await Astro.glob('../../content/hacker-posts/*.md');
 
-// 筛选包含该标签的文章
-const filteredPosts = posts
+// 分别筛选普通和黑客文章
+const normalFiltered = normalPosts
   .filter(post => {
     const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
     return tags.includes(tag);
@@ -38,44 +41,155 @@ const filteredPosts = posts
     is_ascii: post.frontmatter.cover_ascii ? 1 : 0,
     created_at: post.frontmatter.date || new Date().toISOString(),
     word_count: post.frontmatter.word_count || 0,
-  }))
+    post_type: 'normal',
+  }));
+
+const hackerFiltered = hackerPosts
+  .filter(post => {
+    const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+    return tags.includes(tag);
+  })
+  .map(post => ({
+    slug: post.frontmatter.slug || post.file.split('/').pop()?.replace('.md', '') || '',
+    title: post.frontmatter.title || 'Untitled',
+    summary: post.frontmatter.summary || '',
+    tags: Array.isArray(post.frontmatter.tags) ? JSON.stringify(post.frontmatter.tags) : '[]',
+    cover_image: post.frontmatter.cover || '',
+    is_ascii: post.frontmatter.cover_ascii ? 1 : 0,
+    created_at: post.frontmatter.date || new Date().toISOString(),
+    word_count: post.frontmatter.word_count || 0,
+    post_type: 'hacker',
+  }));
+
+// 合并所有文章（用于统计标签）
+const allPosts = [...normalFiltered, ...hackerFiltered]
   .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-// 统计所有标签
-const tagCountMap = new Map<string, number>();
-posts.forEach(post => {
+// 统计普通标签
+const normalTagCount = new Map<string, number>();
+normalPosts.forEach(post => {
   const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
   tags.forEach((t: string) => {
-    tagCountMap.set(t, (tagCountMap.get(t) || 0) + 1);
+    normalTagCount.set(t, (normalTagCount.get(t) || 0) + 1);
   });
 });
-const tagItems = Array.from(tagCountMap.entries())
-  .map(([name, count]) => ({ id: 0, name, count }))
+
+// 统计黑客标签
+const hackerTagCount = new Map<string, number>();
+hackerPosts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((t: string) => {
+    hackerTagCount.set(t, (hackerTagCount.get(t) || 0) + 1);
+  });
+});
+
+const normalTagItems = Array.from(normalTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'normal' }))
   .sort((a, b) => b.count - a.count);
+
+const hackerTagItems = Array.from(hackerTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'hacker' }))
+  .sort((a, b) => b.count - a.count);
+
+const allTagItems = [...normalTagItems, ...hackerTagItems].sort((a, b) => b.count - a.count);
+
+const totalNormal = normalFiltered.length;
+const totalHacker = hackerFiltered.length;
 ---
 
-<BaseLayout title={`标签: ${tag} - Rin Blog`} description={`浏览标签为"${tag}"的文章`}>
+<BaseLayout title={`标签: ${tag} - 林天策 Blog`} description={`浏览标签为"${tag}"的文章`}>
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">
         🏷️ <span style="color:var(--color-primary);">#{tag}</span>
       </h1>
-      <p class="page-subtitle">共 {filteredPosts.length} 篇文章</p>
+      <p class="page-subtitle">
+        <span class="tag-post-count-normal">共 {totalNormal} 篇文章</span>
+        <span class="tag-post-count-hacker" style="display:none;">共 {totalHacker} 篇文章</span>
+      </p>
     </div>
 
-    <TagList tags={tagItems} activeTag={tag} />
+    <div class="tags-cloud" id="tags-cloud">
+      {allTagItems.length === 0 ? (
+        <p class="empty-state-text">暂无标签</p>
+      ) : (
+        allTagItems.map(tagItem => (
+          <a
+            href={`/tags/${tagItem.name}`}
+            class={`tag-item ${tagItem.name === tag ? 'active' : ''}`}
+            data-post-type={tagItem.post_type}
+            style={tagItem.name === tag ? 'background:var(--color-primary);color:var(--text-inverse);border-color:var(--color-primary);' : ''}
+          >
+            {tagItem.name}
+            <span class="count">{tagItem.count}</span>
+          </a>
+        ))
+      )}
+    </div>
 
-    {filteredPosts.length === 0 ? (
+    {allPosts.length === 0 ? (
       <div class="empty-state">
         <div class="empty-state-icon">🔍</div>
         <p class="empty-state-text">该标签下暂无文章</p>
       </div>
     ) : (
-      <div class="posts-grid">
-        {filteredPosts.map(post => (
-          <PostCard {...post} />
+      <div class="posts-grid" id="tag-posts-grid">
+        {allPosts.map(post => (
+          <div data-post-type={post.post_type}>
+            <PostCard {...post} />
+          </div>
         ))}
       </div>
     )}
   </div>
 </BaseLayout>
+
+<script>
+  // 标签隔离：根据当前模式过滤标签和文章
+  (function() {
+    function filterByMode() {
+      const isHackerMode = document.documentElement.classList.contains('hacker-mode');
+      const tagItems = document.querySelectorAll('#tags-cloud .tag-item');
+      const postCards = document.querySelectorAll('#tag-posts-grid [data-post-type]');
+      const normalCount = document.querySelector('.tag-post-count-normal') as HTMLElement;
+      const hackerCount = document.querySelector('.tag-post-count-hacker') as HTMLElement;
+
+      // 过滤标签
+      tagItems.forEach((item: Element) => {
+        const el = item as HTMLElement;
+        const postType = el.getAttribute('data-post-type');
+        if (isHackerMode) {
+          el.style.display = postType === 'hacker' ? '' : 'none';
+        } else {
+          el.style.display = postType === 'normal' ? '' : 'none';
+        }
+      });
+
+      // 过滤文章
+      postCards.forEach((item: Element) => {
+        const el = item as HTMLElement;
+        const postType = el.getAttribute('data-post-type');
+        if (isHackerMode) {
+          el.style.display = postType === 'hacker' ? '' : 'none';
+        } else {
+          el.style.display = postType === 'normal' ? '' : 'none';
+        }
+      });
+
+      // 更新计数
+      if (normalCount) normalCount.style.display = isHackerMode ? 'none' : '';
+      if (hackerCount) hackerCount.style.display = isHackerMode ? '' : 'none';
+    }
+
+    filterByMode();
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.attributeName === 'class') {
+          filterByMode();
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  })();
+</script>

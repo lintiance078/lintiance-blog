@@ -1,0 +1,123 @@
+---
+// ============================================================
+// Sidebar - 常驻左侧侧边栏
+// 包含标签列表（模式过滤）和站点简介
+// 通过设置面板开关控制显示/隐藏
+// DOM 完全移除/恢复，不隐藏
+// ============================================================
+import TagList from '@components/TagList.astro';
+
+const normalPosts = await Astro.glob('../content/posts/*.md');
+const hackerPosts = await Astro.glob('../content/hacker-posts/*.md');
+
+// 统计普通标签
+const normalTagCount = new Map<string, number>();
+normalPosts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((tag: string) => {
+    normalTagCount.set(tag, (normalTagCount.get(tag) || 0) + 1);
+  });
+});
+
+// 统计黑客标签
+const hackerTagCount = new Map<string, number>();
+hackerPosts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((tag: string) => {
+    hackerTagCount.set(tag, (hackerTagCount.get(tag) || 0) + 1);
+  });
+});
+
+const normalTags = Array.from(normalTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'normal' }))
+  .sort((a, b) => b.count - a.count);
+
+const hackerTags = Array.from(hackerTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'hacker' }))
+  .sort((a, b) => b.count - a.count);
+
+const allTags = [...normalTags, ...hackerTags].sort((a, b) => b.count - a.count);
+---
+
+<aside class="site-sidebar" id="site-sidebar">
+  <div class="sidebar-inner">
+    <!-- 站点简介 -->
+    <div class="sidebar-section">
+      <h4 class="sidebar-section-title">📋 关于本站</h4>
+      <div class="sidebar-about">
+        <p class="sidebar-about-text">林天策的个人博客，记录技术、生活与思考。</p>
+        <div class="sidebar-stats">
+          <div class="sidebar-stat">
+            <span class="sidebar-stat-num" id="sidebar-normal-count">{normalPosts.length}</span>
+            <span class="sidebar-stat-label">普通文章</span>
+          </div>
+          <div class="sidebar-stat">
+            <span class="sidebar-stat-num" id="sidebar-hacker-count">{hackerPosts.length}</span>
+            <span class="sidebar-stat-label">隐秘文章</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标签云 -->
+    <div class="sidebar-section">
+      <h4 class="sidebar-section-title">🏷️ 标签</h4>
+      <div class="sidebar-tags" id="sidebar-tags">
+        {allTags.map(tag => (
+          <a
+            href={`/tags/${tag.name}`}
+            class="sidebar-tag-item"
+            data-post-type={(tag as any).post_type || 'normal'}
+          >
+            {tag.name}
+            <span class="sidebar-tag-count">{tag.count}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+</aside>
+
+<script>
+  // 标签隔离：根据当前模式过滤侧边栏标签
+  (function() {
+    function filterSidebarTags() {
+      const isHackerMode = document.documentElement.classList.contains('hacker-mode');
+      const tagItems = document.querySelectorAll('#sidebar-tags .sidebar-tag-item');
+      const normalCount = document.getElementById('sidebar-normal-count');
+      const hackerCount = document.getElementById('sidebar-hacker-count');
+
+      tagItems.forEach((item: Element) => {
+        const el = item as HTMLElement;
+        const postType = el.getAttribute('data-post-type');
+        if (isHackerMode) {
+          el.style.display = postType === 'hacker' ? '' : 'none';
+        } else {
+          el.style.display = postType === 'normal' ? '' : 'none';
+        }
+      });
+
+      // 高亮对应计数
+      if (normalCount && hackerCount) {
+        if (isHackerMode) {
+          normalCount.style.opacity = '0.5';
+          hackerCount.style.opacity = '1';
+          hackerCount.style.color = 'var(--color-primary)';
+        } else {
+          normalCount.style.opacity = '1';
+          normalCount.style.color = 'var(--color-primary)';
+          hackerCount.style.opacity = '0.5';
+        }
+      }
+    }
+
+    filterSidebarTags();
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.attributeName === 'class') filterSidebarTags();
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  })();
+</script>

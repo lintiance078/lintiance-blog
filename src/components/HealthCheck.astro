@@ -1,39 +1,26 @@
 ---
 // ============================================================
-// HealthCheck - 站点健康检测面板（Rin 风格）
+// HealthCheck - 站点健康检测面板（嵌入设置面板）
 // 纯前端 JS 检测页面资源、链接有效性
 // 结果仅保存在浏览器 localStorage
+// 支持导出检测日志为 txt 文件
 // ============================================================
 ---
 
-<div class="health-check-panel">
-  <button
-    class="health-check-toggle"
-    id="health-check-toggle"
-    title="站点健康检测"
-    aria-label="站点健康检测"
-    onclick="document.getElementById('health-check-popup')?.classList.toggle('active')"
-  >
-    💓
-  </button>
-
-  <div class="health-check-popup" id="health-check-popup">
-    <div class="health-check-header">
-      <span>💓 站点健康检测</span>
-      <button
-        class="btn btn-icon"
-        style="width:28px;height:28px;font-size:0.8rem;"
-        onclick="document.getElementById('health-check-popup')?.classList.remove('active')"
-      >
-        ✕
-      </button>
+<div class="health-check-section" id="health-check-section">
+  <div class="health-check-body" id="health-check-body">
+    <div style="text-align:center;padding:1rem;">
+      <div class="spinner" style="margin:0 auto 0.75rem;"></div>
+      <p style="font-size:0.85rem;color:var(--text-tertiary);">检测中...</p>
     </div>
-    <div class="health-check-body" id="health-check-body">
-      <div style="text-align:center;padding:2rem;">
-        <div class="spinner" style="margin:0 auto 1rem;"></div>
-        <p style="font-size:0.85rem;color:var(--text-tertiary);">检测中...</p>
-      </div>
-    </div>
+  </div>
+  <div class="health-check-actions" style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.75rem;">
+    <button class="btn" style="font-size:0.75rem;padding:0.3rem 0.8rem;" id="health-recheck-btn" onclick="window.__runHealthCheck?.()">
+      🔄 重新检测
+    </button>
+    <button class="btn" style="font-size:0.75rem;padding:0.3rem 0.8rem;" id="health-export-btn" onclick="window.__exportHealthLog?.()">
+      📥 导出检测日志
+    </button>
   </div>
 </div>
 
@@ -46,6 +33,9 @@
       status: 'ok' | 'warn' | 'error';
       message: string;
     }
+
+    let lastResults: HealthResult[] = [];
+    let lastTimestamp: number = 0;
 
     async function runHealthCheck(): Promise<HealthResult[]> {
       const results: HealthResult[] = [];
@@ -64,7 +54,6 @@
       // 2. 检查关键资源加载
       const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
       const failedResources = resources.filter(r => {
-        // 检查响应状态（部分浏览器支持）
         return r.transferSize === 0 && r.duration > 0;
       });
       results.push({
@@ -73,20 +62,27 @@
         message: `${resources.length} 个资源，${failedResources.length} 个异常`,
       });
 
-      // 3. 检查 API 接口
-      try {
-        const resp = await fetch('/api/config');
-        results.push({
-          name: 'API 接口',
-          status: resp.ok ? 'ok' : 'error',
-          message: resp.ok ? '正常' : `HTTP ${resp.status}`,
-        });
-      } catch {
-        results.push({
-          name: 'API 接口',
-          status: 'error',
-          message: '无法连接',
-        });
+      // 3. 检查关键页面是否存在（HEAD 请求，避免404）
+      const pagesToCheck = [
+        { name: '首页', url: '/' },
+        { name: '文章列表', url: '/articles' },
+        { name: '标签页', url: '/tags' },
+      ];
+      for (const page of pagesToCheck) {
+        try {
+          const resp = await fetch(page.url, { method: 'HEAD' });
+          results.push({
+            name: `页面: ${page.name}`,
+            status: resp.ok ? 'ok' : 'error',
+            message: resp.ok ? '可访问' : `HTTP ${resp.status}`,
+          });
+        } catch {
+          results.push({
+            name: `页面: ${page.name}`,
+            status: 'error',
+            message: '无法连接',
+          });
+        }
       }
 
       // 4. 检查 localStorage
@@ -125,10 +121,51 @@
         });
       }
 
+      // 7. 检查关键 CSS/JS 文件
+      const criticalFiles = [
+        '/pagefind/pagefind.js',
+      ];
+      for (const file of criticalFiles) {
+        try {
+          const resp = await fetch(file, { method: 'HEAD' });
+          results.push({
+            name: `资源: ${file.split('/').pop()}`,
+            status: resp.ok ? 'ok' : 'warn',
+            message: resp.ok ? '可访问' : `HTTP ${resp.status}`,
+          });
+        } catch {
+          results.push({
+            name: `资源: ${file.split('/').pop()}`,
+            status: 'warn',
+            message: '未找到（构建后可用）',
+          });
+        }
+      }
+
+      // 8. 检查主题设置
+      try {
+        const theme = localStorage.getItem('rin_theme');
+        const settings = localStorage.getItem('lintiance_settings');
+        results.push({
+          name: '用户设置',
+          status: (theme || settings) ? 'ok' : 'warn',
+          message: theme || settings ? '已配置' : '未配置',
+        });
+      } catch {
+        results.push({
+          name: '用户设置',
+          status: 'warn',
+          message: '读取失败',
+        });
+      }
+
+      lastResults = results;
+      lastTimestamp = Date.now();
+
       // 保存到 localStorage
       try {
         localStorage.setItem('rin_health_last', JSON.stringify({
-          timestamp: Date.now(),
+          timestamp: lastTimestamp,
           results,
         }));
       } catch {}
@@ -138,7 +175,7 @@
 
     function renderResults(results: HealthResult[]) {
       if (!body) return;
-      body.innerHTML = results.map(r => `
+      let html = results.map(r => `
         <div class="health-item">
           <span class="health-icon ${r.status}"></span>
           <span class="health-item-name">${r.name}</span>
@@ -146,43 +183,107 @@
         </div>
       `).join('');
 
-      // 添加检测时间
-      body.innerHTML += `
-        <div style="text-align:center;margin-top:1rem;font-size:0.75rem;color:var(--text-tertiary);">
-          检测时间: ${new Date().toLocaleString('zh-CN')}
-          <br />
-          <button
-            class="btn"
-            style="margin-top:0.5rem;font-size:0.75rem;padding:0.3rem 0.8rem;"
-            onclick="this.closest('.health-check-popup').querySelector('.health-check-body').innerHTML='<div style=\\'text-align:center;padding:2rem;\\'><div class=\\'spinner\\' style=\\'margin:0 auto 1rem;\\'></div><p style=\\'font-size:0.85rem;color:var(--text-tertiary);\\'>检测中...</p></div>';setTimeout(()=>location.reload(),100)"
-          >
-            🔄 重新检测
-          </button>
+      // 统计
+      const okCount = results.filter(r => r.status === 'ok').length;
+      const warnCount = results.filter(r => r.status === 'warn').length;
+      const errorCount = results.filter(r => r.status === 'error').length;
+      html += `
+        <div style="text-align:center;margin-top:0.75rem;font-size:0.75rem;color:var(--text-tertiary);">
+          <span style="color:#22c55e;">✅ ${okCount} 正常</span>
+          ${warnCount > 0 ? ` <span style="color:#f59e0b;">⚠️ ${warnCount} 警告</span>` : ''}
+          ${errorCount > 0 ? ` <span style="color:#ef4444;">❌ ${errorCount} 错误</span>` : ''}
+          <br/>检测时间: ${new Date().toLocaleString('zh-CN')}
         </div>
       `;
+      body.innerHTML = html;
     }
 
+    // 导出日志
+    function exportHealthLog() {
+      if (lastResults.length === 0) {
+        // 尝试从缓存加载
+        try {
+          const cached = localStorage.getItem('rin_health_last');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            lastResults = parsed.results;
+            lastTimestamp = parsed.timestamp;
+          }
+        } catch {}
+      }
+
+      if (lastResults.length === 0) {
+        alert('暂无检测数据，请先执行检测');
+        return;
+      }
+
+      const now = new Date();
+      const timeStr = now.toLocaleString('zh-CN');
+      const okCount = lastResults.filter(r => r.status === 'ok').length;
+      const warnCount = lastResults.filter(r => r.status === 'warn').length;
+      const errorCount = lastResults.filter(r => r.status === 'error').length;
+
+      let log = `============================================================\n`;
+      log += `  站点健康检测报告\n`;
+      log += `  检测时间: ${timeStr}\n`;
+      log += `  站点: ${window.location.origin}\n`;
+      log += `============================================================\n\n`;
+      log += `[统计] 正常: ${okCount} | 警告: ${warnCount} | 错误: ${errorCount}\n\n`;
+      log += `--- 检测明细 ---\n`;
+      lastResults.forEach(r => {
+        const icon = r.status === 'ok' ? '[OK]' : r.status === 'warn' ? '[WARN]' : '[ERROR]';
+        log += `${icon} ${r.name}: ${r.message}\n`;
+      });
+      log += `\n--- 系统信息 ---\n`;
+      log += `User Agent: ${navigator.userAgent}\n`;
+      log += `Language: ${navigator.language}\n`;
+      log += `Online: ${navigator.onLine}\n`;
+      if ('connection' in navigator) {
+        const conn = (navigator as any).connection;
+        log += `Network: ${conn?.effectiveType || 'unknown'}\n`;
+      }
+      log += `\n============================================================\n`;
+      log += `  报告由 林天策 Blog 健康检测生成\n`;
+      log += `============================================================\n`;
+
+      const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `health-check-${dateStr}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // 对外暴露
+    window.__runHealthCheck = async function() {
+      if (!body) return;
+      body.innerHTML = '<div style="text-align:center;padding:1rem;"><div class="spinner" style="margin:0 auto 0.75rem;"></div><p style="font-size:0.85rem;color:var(--text-tertiary);">检测中...</p></div>';
+      const results = await runHealthCheck();
+      renderResults(results);
+    };
+
+    window.__exportHealthLog = exportHealthLog;
+
     // 优先展示上次缓存结果
+    let hasCached = false;
     try {
       const cached = localStorage.getItem('rin_health_last');
       if (cached) {
         const { results, timestamp } = JSON.parse(cached);
+        lastResults = results;
+        lastTimestamp = timestamp;
         renderResults(results);
-        // 更新检测时间
-        const timeEl = body?.querySelector('div:last-child');
-        if (timeEl) {
-          timeEl.innerHTML = `
-            上次检测: ${new Date(timestamp).toLocaleString('zh-CN')}
-            <br />
-            <button class="btn" style="margin-top:0.5rem;font-size:0.75rem;padding:0.3rem 0.8rem;"
-              onclick="this.closest('.health-check-popup').querySelector('.health-check-body').innerHTML='<div style=\\'text-align:center;padding:2rem;\\'><div class=\\'spinner\\' style=\\'margin:0 auto 1rem;\\'></div><p style=\\'font-size:0.85rem;color:var(--text-tertiary);\\'>检测中...</p></div>';setTimeout(()=>location.reload(),100)"
-            >🔄 重新检测</button>
-          `;
-        }
+        hasCached = true;
       }
     } catch {}
 
-    // 异步执行完整检测
-    runHealthCheck().then(renderResults);
+    // 异步执行完整检测（如果没有缓存或缓存超过1小时）
+    if (!hasCached || (Date.now() - lastTimestamp > 3600000)) {
+      runHealthCheck().then(renderResults);
+    }
   })();
 </script>

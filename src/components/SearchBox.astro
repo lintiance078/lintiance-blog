@@ -32,29 +32,29 @@
   </div>
 </div>
 
-<script>
+<script is:inline>
   (function() {
-    const overlay = document.getElementById('search-modal-overlay');
-    const modal = document.getElementById('search-modal');
-    const input = document.getElementById('search-modal-input') as HTMLInputElement;
-    const resultsContainer = document.getElementById('search-modal-results');
-    const closeBtn = document.getElementById('search-modal-close');
+    var overlay = document.getElementById('search-modal-overlay');
+    var modal = document.getElementById('search-modal');
+    var input = document.getElementById('search-modal-input');
+    var resultsContainer = document.getElementById('search-modal-results');
+    var closeBtn = document.getElementById('search-modal-close');
 
-    let pagefindInstance: any = null;
-    let pagefindReady = false;
+    var pagefindInstance = null;
+    var pagefindReady = false;
 
     // 初始化 Pagefind
     async function initPagefind() {
       try {
-        const checkResp = await fetch('/pagefind/pagefind.js', { method: 'HEAD' });
+        var checkResp = await fetch('/pagefind/pagefind.js', { method: 'HEAD' });
         if (!checkResp.ok) {
           throw new Error('Pagefind 索引未构建');
         }
-        const pagefind = await import('/pagefind/pagefind.js');
+        var pagefind = await import('/pagefind/pagefind.js');
         pagefindInstance = pagefind;
         pagefindReady = true;
         console.log('[搜索] Pagefind 索引已加载');
-      } catch {
+      } catch (e) {
         pagefindReady = false;
         console.log('[搜索] Pagefind 不可用，搜索仅在构建后生效');
       }
@@ -62,18 +62,19 @@
 
     // 打开搜索弹窗
     function openSearch() {
-      overlay?.classList.add('active');
-      // 延迟聚焦，确保动画完成
-      setTimeout(() => {
-        input?.focus();
-        input?.select();
+      if (overlay) overlay.classList.add('active');
+      setTimeout(function() {
+        if (input) {
+          input.focus();
+          input.select();
+        }
       }, 150);
       document.body.style.overflow = 'hidden';
     }
 
     // 关闭搜索弹窗
     function closeSearch() {
-      overlay?.classList.remove('active');
+      if (overlay) overlay.classList.remove('active');
       document.body.style.overflow = '';
       if (input) input.value = '';
       if (resultsContainer) {
@@ -82,9 +83,9 @@
     }
 
     // 执行搜索
-    async function doSearch(query: string) {
+    async function doSearch(query) {
       if (!resultsContainer) return;
-      const q = query.trim();
+      var q = query.trim();
       if (!q) {
         resultsContainer.innerHTML = '<p class="search-modal-hint">输入关键词后按 Enter 搜索</p>';
         return;
@@ -98,27 +99,40 @@
       resultsContainer.innerHTML = '<div class="search-modal-loading"><div class="spinner"></div><span>搜索中...</span></div>';
 
       try {
-        const search = await pagefindInstance.search(q, { pageLength: 10 });
+        var search = await pagefindInstance.search(q, { pageLength: 20 });
         if (!search || search.results.length === 0) {
           resultsContainer.innerHTML = '<p class="search-modal-empty">未找到与 "<strong>' + escapeHtml(q) + '</strong>" 相关的文章</p>';
           return;
         }
 
-        const results = search.results.slice(0, 10);
-        const htmlPromises = results.map(async (result: any) => {
-          const data = await result.data();
-          return `
-            <a class="search-result-item" href="${data.url}">
-              <span class="search-result-title">${data.meta?.title || data.url}</span>
-              <span class="search-result-excerpt">${data.excerpt || ''}</span>
-            </a>
-          `;
+        var allResults = await Promise.all(
+          search.results.map(function(result) { return result.data(); })
+        );
+
+        // 过滤：非黑客模式下隐藏黑客文章
+        var isHackerMode = document.documentElement.classList.contains('hacker-mode');
+        var filteredResults = allResults.filter(function(data) {
+          var url = data.url || '';
+          var isHackerUrl = url.indexOf('/posts/hacker-') !== -1;
+          if (isHackerMode) return isHackerUrl;
+          return !isHackerUrl;
         });
 
-        const htmls = await Promise.all(htmlPromises);
-        let html = htmls.join('');
-        if (search.results.length > 10) {
-          html += `<p class="search-modal-count">显示前 10 条，共 ${search.results.length} 条结果</p>`;
+        if (filteredResults.length === 0) {
+          resultsContainer.innerHTML = '<p class="search-modal-empty">未找到与 "<strong>' + escapeHtml(q) + '</strong>" 相关的文章</p>';
+          return;
+        }
+
+        var displayResults = filteredResults.slice(0, 10);
+        var html = displayResults.map(function(data) {
+          return '<a class="search-result-item" href="' + data.url + '">' +
+            '<span class="search-result-title">' + (data.meta ? data.meta.title : data.url) + '</span>' +
+            '<span class="search-result-excerpt">' + (data.excerpt || '') + '</span>' +
+            '</a>';
+        }).join('');
+
+        if (filteredResults.length > 10) {
+          html += '<p class="search-modal-count">显示前 10 条，共 ' + filteredResults.length + ' 条结果</p>';
         }
         resultsContainer.innerHTML = html;
       } catch (e) {
@@ -127,18 +141,32 @@
       }
     }
 
-    function escapeHtml(str: string): string {
-      const div = document.createElement('div');
+    function escapeHtml(str) {
+      var div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
     }
 
     // 事件绑定
     if (input) {
-      input.addEventListener('keydown', (e) => {
+      input.addEventListener('keydown', async function(e) {
         if (e.key === 'Enter') {
           e.preventDefault();
-          doSearch(input.value);
+          var value = input.value.trim();
+
+          var hackerReady = window.__hackerModeReady;
+          if (hackerReady && value) {
+            var success = await window.__triggerHackerMode(value);
+            if (success) {
+              input.value = '';
+              closeSearch();
+              return;
+            }
+            doSearch(value);
+            return;
+          }
+
+          doSearch(value);
         } else if (e.key === 'Escape') {
           closeSearch();
         }
@@ -149,31 +177,26 @@
       closeBtn.addEventListener('click', closeSearch);
     }
 
-    // 点击外部空白关闭
     if (overlay) {
-      overlay.addEventListener('click', (e) => {
+      overlay.addEventListener('click', function(e) {
         if (e.target === overlay) {
           closeSearch();
         }
       });
     }
 
-    // ESC 关闭
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && overlay?.classList.contains('active')) {
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && overlay && overlay.classList.contains('active')) {
         closeSearch();
       }
-      // Ctrl+K 打开搜索
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
         openSearch();
       }
     });
 
-    // 暴露全局方法
-    (window as any).__searchModal = { open: openSearch, close: closeSearch };
+    window.__searchModal = { open: openSearch, close: closeSearch };
 
-    // 初始化
     initPagefind();
   })();
 </script>

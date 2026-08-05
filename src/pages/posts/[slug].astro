@@ -3,14 +3,17 @@
 // 文章详情页 - 动态路由 [slug]
 // 渲染 Markdown 编译的静态 HTML
 // 支持 ASCII 字符画内嵌渲染
+// 黑客文章需通过隐秘模式验证才能查看
 // ============================================================
 import BaseLayout from '@layouts/BaseLayout.astro';
 import AsciiArt from '@components/AsciiArt.astro';
 import { formatDate, parseTags, estimateReadingTime } from '@lib/utils';
 
 export async function getStaticPaths() {
-  const posts = await Astro.glob('../../content/posts/*.md');
-  return posts.map(post => ({
+  const normalPosts = await Astro.glob('../../content/posts/*.md');
+  const hackerPosts = await Astro.glob('../../content/hacker-posts/*.md');
+  const allPosts = [...normalPosts, ...hackerPosts];
+  return allPosts.map(post => ({
     params: {
       slug: post.frontmatter.slug || post.file.split('/').pop()?.replace('.md', '') || '',
     },
@@ -30,12 +33,25 @@ const readingTime = estimateReadingTime(wordCount);
 const cover = frontmatter.cover || '';
 const coverAscii = frontmatter.cover_ascii || '';
 
-// 正文中的 ASCII 字符画通过自定义 remark 插件处理
-// 或直接在 Markdown 中包裹 <pre class="ascii-art">...</pre>
+// 检测文章类型：是否来自 hacker-posts 目录
+const isHackerPost = post.file.includes('hacker-posts');
 ---
 
 <BaseLayout title={`${title} - Rin Blog`} description={summary}>
-  <article class="article">
+  <!-- 黑客文章保护：未激活黑客模式时显示访问拒绝 -->
+  {isHackerPost && (
+    <div id="hacker-post-gate" class="hacker-post-gate">
+      <div class="hacker-gate-content">
+        <div class="hacker-gate-icon">🔒</div>
+        <h2>访问受限</h2>
+        <p>此内容需要通过隐秘模式验证后才能查看。</p>
+        <p class="hacker-gate-hint">在设置面板中连续点击站点名称 5 次，然后在搜索框中输入密钥。</p>
+        <a href="/" class="btn btn-primary" style="margin-top:1rem;">返回首页</a>
+      </div>
+    </div>
+  )}
+
+  <article class="article" data-post-type={isHackerPost ? 'hacker' : 'normal'} style={isHackerPost ? 'display:none' : ''}>
     <header class="article-header">
       <h1 class="article-title">{title}</h1>
 
@@ -109,6 +125,32 @@ const coverAscii = frontmatter.cover_ascii || '';
         btn.classList.add('liked');
         btn.innerHTML = '❤️ 已收藏';
       }
+    })();
+
+    // 黑客文章保护：检测黑客模式状态，决定显示内容还是访问拒绝
+    (function() {
+      const article = document.querySelector('.article[data-post-type="hacker"]');
+      const gate = document.getElementById('hacker-post-gate');
+      if (!article || !gate) return;
+
+      // 检查是否已激活黑客模式
+      function checkHackerMode() {
+        const isHackerMode = document.documentElement.classList.contains('hacker-mode');
+        if (isHackerMode) {
+          article.style.display = '';
+          gate.style.display = 'none';
+        } else {
+          article.style.display = 'none';
+          gate.style.display = '';
+        }
+      }
+
+      // 初始检查
+      checkHackerMode();
+
+      // 监听黑客模式切换（MutationObserver）
+      const observer = new MutationObserver(checkHackerMode);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     })();
   </script>
 </BaseLayout>

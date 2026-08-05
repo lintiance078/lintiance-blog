@@ -1,66 +1,86 @@
 ---
 slug: "blog-building-journey"
-title: "从零搭建个人博客的技术选型与思考"
+title: "从零搭建个人博客的技术选型与架构决策"
 date: "2025-07-01"
-tags: ["博客", "Astro", "Cloudflare", "项目"]
-summary: "记录搭建这个博客的全过程，包括技术选型的考量、踩过的坑、以及为什么最终选择了 Astro + Cloudflare Pages。"
+tags: ["博客", "Astro", "Cloudflare", "前端工程"]
+summary: "记录搭建这个博客的完整技术决策过程，包括 Astro vs Next.js 的深度对比、Cloudflare Pages 部署配置、以及静态博客的架构权衡。"
 cover: ""
 word_count: 0
 ---
 
-# 从零搭建个人博客的技术选型与思考
+# 从零搭建个人博客的技术选型与架构决策
 
-一直想有一个自己的博客，但拖延了很久。因为每次想起要搭博客，脑子里就冒出一堆选择：WordPress？Hexo？Hugo？Next.js？Gatsby？选择太多反而无从下手。
+搭建个人博客的技术选型，本质上是在"简单"和"灵活"之间做权衡。这篇文章记录了我从需求分析到最终部署的完整决策过程。
 
-## 技术选型的过程
+## 需求定义：明确"不需要什么"
 
-### 我的需求
+在列出候选方案之前，我先明确了博客不需要什么，这比列出"需要什么"更能缩小范围：
 
-明确自己的需求是选型的第一步：
+- **不需要 SSR**：博客内容不依赖用户状态，静态生成完全够用
+- **不需要数据库**：文章是 Markdown 文件，不需要持久化存储
+- **不需要 CMS**：用编辑器写 Markdown 比用 Web 后台管理内容更高效
+- **不需要复杂的交互**：不涉及实时数据、用户登录等
 
-1. **静态优先**：博客内容不需要动态交互，静态页面性能最好
-2. **Markdown 写作**：不想在网页编辑器里写东西
-3. **部署简单**：最好能一键部署，无需维护服务器
-4. **自定义灵活**：不想被模板限制，需要完全控制页面结构
-5. **成本低**：个人博客，免费最好
+这些约束直接排除了 Next.js、WordPress、Ghost 等方案。
 
-### 为什么没选这些
+## 候选方案对比
 
-- **WordPress**：太重了，需要 PHP 和 MySQL，维护成本高
-- **Hexo**：生成速度快，但自定义主题比较麻烦
-- **Next.js**：功能强大，但对博客来说过于复杂
-- **Hugo**：Go 模板语法不太习惯
+| 方案 | 构建速度 | 自定义灵活性 | 学习曲线 | 部署复杂度 |
+|------|----------|-------------|----------|-----------|
+| Astro | 快（Vite 底层） | 高（组件模型） | 低 | 低（Cloudflare 适配器） |
+| Hugo | 极快（Go 编译） | 中（Go 模板） | 中 | 低 |
+| Hexo | 中 | 中（EJS 模板） | 低 | 低 |
+| Next.js | 中 | 极高 | 高 | 中 |
 
-### 为什么选了 Astro
+Astro 的"默认零 JS"策略和 Island Architecture 恰好匹配博客的需求：大部分页面是纯静态内容，极少数需要交互的地方（如搜索、评论）可以按需加载 JS。
 
-Astro 的几个特性打动了我：
+## 关键技术决策
 
-1. **默认零 JS**：生成的页面是纯 HTML，只在需要的地方加载 JS
-2. **组件化**：可以使用 `.astro` 组件，结构清晰
-3. **多框架支持**：需要交互的地方可以引入 React/Vue 组件
-4. **Markdown 原生支持**：内容集合功能很好用
-5. **Cloudflare 适配器**：一键部署到 Cloudflare Pages
+### 图片处理策略
 
-### 部署方案
+Astro 内置的 Image 组件在 Cloudflare Pages 上有兼容性问题——`sharp` 库在 Cloudflare 的构建环境中不可用。解决方案是使用 Cloudflare 的 Image Resizing 服务，或者退回到简单的 `<img>` 标签配合预生成的 WebP 格式。
 
-选择了 Cloudflare Pages 而不是 Vercel/Netlify：
+我选择了后者：在构建阶段用脚本将图片转为 WebP 和多尺寸变体，避免运行时依赖。
 
-- 全球 CDN 节点多，国内访问速度相对较好
-- 提供 D1 数据库和 KV 存储，可以做一些动态功能
-- 免费额度足够个人博客使用
-- Pages Functions 可以处理简单的 API 请求
+### 搜索功能：Pagefind
 
-## 踩过的坑
+纯静态博客的搜索不能依赖后端 API。Pagefind 是一个零配置的静态搜索库，它在构建后扫描生成的 HTML 文件建立索引，搜索时完全在浏览器端运行。关键配置：
 
-1. **图片处理**：Astro 的 Image 组件在 Cloudflare 上不兼容，需要做特殊处理
-2. **搜索功能**：纯静态博客的搜索需要借助 Pagefind 这类工具
-3. **暗色模式**：需要在页面加载前注入脚本，否则会有闪烁
+```javascript
+// astro.config.mjs 中的 Pagefind 集成
+import pagefind from "astro-pagefind";
 
-## 后续计划
+export default defineConfig({
+  integrations: [pagefind()],
+  build: {
+    // 确保 Pagefind 在构建后运行
+  }
+});
+```
 
-博客会持续迭代，接下来想加上这些功能：
-- 评论系统（可能用 Giscus）
-- RSS 订阅
-- 阅读统计
+### 暗色模式防闪烁
 
-搭建博客的过程本身就是一个很好的学习项目，建议每个开发者都试一次。
+暗色模式的经典问题是：如果通过 JS 读取 `localStorage` 来切换主题，页面加载时会有短暂的"闪烁"（默认亮色主题渲染后才切换到暗色）。解决方案是在 `<head>` 中内联一个阻塞脚本，在页面渲染前读取主题偏好：
+
+```html
+<script is:inline>
+  const theme = localStorage.getItem('theme') || 
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+</script>
+```
+
+`is:inline` 是 Astro 的指令，让这段脚本不经过打包直接输出。
+
+## 部署配置
+
+Cloudflare Pages 的部署通过 GitHub 集成自动触发。`wrangler.toml` 中无需额外配置，Pages 会自动识别 Astro 的构建输出目录。唯一需要注意的是环境变量：构建时需要的 API key 通过 Cloudflare Dashboard 设置，而不是 `.env` 文件。
+
+```bash
+# 构建命令
+npm run build
+# 输出目录
+dist/
+```
+
+整个搭建过程给我最大的启发是：技术选型的核心不是"哪个技术最新最热"，而是"哪个技术解决的问题最匹配你不需要的功能"。少即是多。

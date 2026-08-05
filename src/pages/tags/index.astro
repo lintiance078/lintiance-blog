@@ -1,33 +1,125 @@
 ---
 // ============================================================
 // 标签分类页 - 展示所有标签云
+// 标签隔离：普通模式只显示普通标签，黑客模式只显示黑客标签
+// 通过 data-post-type 属性标记标签归属，前端 JS 过滤
 // ============================================================
 import BaseLayout from '@layouts/BaseLayout.astro';
-import TagList from '@components/TagList.astro';
 
-const posts = await Astro.glob('../../content/posts/*.md');
+const normalPosts = await Astro.glob('../../content/posts/*.md');
+const hackerPosts = await Astro.glob('../../content/hacker-posts/*.md');
 
-// 统计标签
-const tagCountMap = new Map<string, number>();
-posts.forEach(post => {
+// 统计普通标签
+const normalTagCount = new Map<string, number>();
+normalPosts.forEach(post => {
   const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
   tags.forEach((tag: string) => {
-    tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1);
+    normalTagCount.set(tag, (normalTagCount.get(tag) || 0) + 1);
   });
 });
 
-const tagItems = Array.from(tagCountMap.entries())
-  .map(([name, count]) => ({ id: 0, name, count }))
+// 统计黑客标签
+const hackerTagCount = new Map<string, number>();
+hackerPosts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((tag: string) => {
+    hackerTagCount.set(tag, (hackerTagCount.get(tag) || 0) + 1);
+  });
+});
+
+// 合并标签（带归属标记）
+const normalTags = Array.from(normalTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'normal' }))
   .sort((a, b) => b.count - a.count);
+
+const hackerTags = Array.from(hackerTagCount.entries())
+  .map(([name, count]) => ({ id: 0, name, count, post_type: 'hacker' }))
+  .sort((a, b) => b.count - a.count);
+
+const allTags = [...normalTags, ...hackerTags].sort((a, b) => b.count - a.count);
+
+const totalNormal = normalTags.length;
+const totalHacker = hackerTags.length;
 ---
 
 <BaseLayout title="标签分类 - 林天策 Blog" description="按标签浏览文章">
   <div class="container">
     <div class="page-header">
       <h1 class="page-title">🏷️ 标签分类</h1>
-      <p class="page-subtitle">共 {tagItems.length} 个标签</p>
+      <p class="page-subtitle">
+        <span class="tag-count-normal">共 {totalNormal} 个标签</span>
+        <span class="tag-count-hacker" style="display:none;">共 {totalHacker} 个标签</span>
+      </p>
     </div>
 
-    <TagList tags={tagItems} />
+    <div class="tags-cloud" id="tags-cloud">
+      {allTags.length === 0 ? (
+        <p class="empty-state-text">暂无标签</p>
+      ) : (
+        allTags.map(tag => (
+          <a
+            href={`/tags/${tag.name}`}
+            class="tag-item"
+            data-post-type={tag.post_type}
+            style=""
+          >
+            {tag.name}
+            <span class="count">{tag.count}</span>
+          </a>
+        ))
+      )}
+    </div>
   </div>
 </BaseLayout>
+
+<script>
+  // 标签隔离：根据当前模式过滤标签
+  (function() {
+    function filterTagsByMode() {
+      const isHackerMode = document.documentElement.classList.contains('hacker-mode');
+      const tagItems = document.querySelectorAll('#tags-cloud .tag-item');
+      const normalCount = document.querySelector('.tag-count-normal') as HTMLElement;
+      const hackerCount = document.querySelector('.tag-count-hacker') as HTMLElement;
+
+      let visibleCount = 0;
+      tagItems.forEach((item: Element) => {
+        const el = item as HTMLElement;
+        const postType = el.getAttribute('data-post-type');
+        if (isHackerMode) {
+          // 黑客模式：只显示黑客标签
+          if (postType === 'hacker') {
+            el.style.display = '';
+            visibleCount++;
+          } else {
+            el.style.display = 'none';
+          }
+        } else {
+          // 普通模式：只显示普通标签
+          if (postType === 'normal') {
+            el.style.display = '';
+            visibleCount++;
+          } else {
+            el.style.display = 'none';
+          }
+        }
+      });
+
+      // 更新计数显示
+      if (normalCount) normalCount.style.display = isHackerMode ? 'none' : '';
+      if (hackerCount) hackerCount.style.display = isHackerMode ? '' : 'none';
+    }
+
+    // 初始过滤
+    filterTagsByMode();
+
+    // 监听模式切换
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        if (m.attributeName === 'class') {
+          filterTagsByMode();
+        }
+      });
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  })();
+</script>

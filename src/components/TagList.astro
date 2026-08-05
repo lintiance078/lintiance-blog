@@ -1,6 +1,7 @@
 ---
 // ============================================================
 // TagList - 标签列表组件
+// 支持 data-post-type 属性用于标签隔离过滤
 // ============================================================
 import type { TagItem } from '@lib/api';
 
@@ -20,6 +21,7 @@ const { tags, activeTag } = Astro.props;
       <a
         href={`/tags/${tag.name}`}
         class={`tag-item ${activeTag === tag.name ? 'active' : ''}`}
+        data-post-type={(tag as any).post_type || 'normal'}
         style={activeTag === tag.name ? 'background:var(--color-primary);color:var(--text-inverse);border-color:var(--color-primary);' : ''}
       >
         {tag.name}

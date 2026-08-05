@@ -19,6 +19,7 @@ export default defineConfig({
     inlineStylesheets: 'auto',
   },
   vite: {
+    envPrefix: ['PUBLIC_', 'VITE_', 'HACKER_'],
     build: {
       cssMinify: true,
       minify: 'esbuild',

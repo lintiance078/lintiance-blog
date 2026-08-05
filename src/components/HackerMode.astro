@@ -1,0 +1,592 @@
+---
+// ============================================================
+// HackerMode - 隐秘黑客模式触发与切换
+// 5次点击站点名称 → 搜索框输入密钥 → 本地验证切换黑客主题
+// 刷新页面即退出，不持久化
+// 密钥从 .env 读取，构建时注入哈希，前端本地比对
+// 密钥原文不出现在浏览器源码中
+// ============================================================
+
+// djb2 哈希算法 - 构建时计算
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+  }
+  return hash >>> 0;
+}
+
+// 从环境变量读取密钥（Vite 构建时注入）
+const secretKey = import.meta.env.HACKER_SECRET_KEY || '';
+const keyHash = djb2Hash(secretKey);
+---
+
+<!-- 隐藏元素，存储密钥哈希供前端 JS 读取 -->
+<span id="hacker-key-hash" style="display:none" data-hash={String(keyHash)}></span>
+
+<script>
+  (function() {
+    // 点击计数
+    let clickCount = 0;
+    let clickTimer: ReturnType<typeof setTimeout> | null = null;
+    const CLICK_THRESHOLD = 5;
+    const CLICK_TIMEOUT = 2000; // 2秒内无操作清零
+
+    // djb2 哈希算法 - 前端本地计算（与构建时算法一致）
+    function djb2Hash(str: string): number {
+      let hash = 5381;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+      }
+      return hash >>> 0;
+    }
+
+    // 存储的密钥哈希（构建时注入）
+    const STORED_HASH = parseInt(
+      document.getElementById('hacker-key-hash')?.getAttribute('data-hash') || '0'
+    );
+
+    // 查找设置面板中的站点名称元素
+    function initTrigger() {
+      const siteTitle = document.getElementById('config-site-title');
+      if (!siteTitle) {
+        // 重试，因为设置面板可能延迟加载
+        setTimeout(initTrigger, 500);
+        return;
+      }
+
+      siteTitle.style.cursor = 'pointer';
+      siteTitle.style.userSelect = 'none';
+
+      siteTitle.addEventListener('click', () => {
+        clickCount++;
+        if (clickTimer) clearTimeout(clickTimer);
+
+        clickTimer = setTimeout(() => {
+          clickCount = 0;
+        }, CLICK_TIMEOUT);
+
+        if (clickCount >= CLICK_THRESHOLD) {
+          clickCount = 0;
+          if (clickTimer) clearTimeout(clickTimer);
+          showHackerLoading();
+        }
+      });
+    }
+
+    // 显示像素黑客风 loading 标识（仅首页右下角）
+    function showHackerLoading() {
+      // 仅在首页显示loading标记
+      const isHomePage = window.location.pathname === '/' || window.location.pathname === '/index.html';
+      if (!isHomePage) {
+        // 非首页：直接设置ready状态，不显示loading标记
+        (window as any).__hackerModeReady = true;
+        const searchInput = document.getElementById('search-modal-input');
+        if (searchInput) {
+          (searchInput as HTMLInputElement).placeholder = '输入密钥...';
+        }
+        return;
+      }
+
+      // 移除旧标识
+      const old = document.getElementById('hacker-loading-indicator');
+      if (old) old.remove();
+
+      const indicator = document.createElement('div');
+      indicator.id = 'hacker-loading-indicator';
+      indicator.innerHTML = '▮▯▮▯▮';
+      indicator.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.7rem;
+        color: #00ff41;
+        background: rgba(0, 0, 0, 0.8);
+        border: 1px solid #00ff41;
+        padding: 4px 8px;
+        animation: pixel-blink 0.5s steps(1) infinite;
+        text-shadow: 0 0 4px #00ff41;
+        pointer-events: none;
+      `;
+
+      document.body.appendChild(indicator);
+
+      // 暴露全局状态
+      (window as any).__hackerModeReady = true;
+
+      // 在搜索框内显示提示
+      const searchInput = document.getElementById('search-modal-input');
+      if (searchInput) {
+        (searchInput as HTMLInputElement).placeholder = '输入密钥...';
+      }
+    }
+
+    // 本地验证密钥（哈希比对，不发起网络请求）
+    function verifyHackerKeyLocal(key: string): boolean {
+      if (!key || STORED_HASH === 0) return false;
+      const inputHash = djb2Hash(key);
+      return inputHash === STORED_HASH;
+    }
+
+    // 切换到黑客模式
+    function activateHackerMode() {
+      document.documentElement.classList.add('hacker-mode');
+      // 隐藏 loading 标识
+      const indicator = document.getElementById('hacker-loading-indicator');
+      if (indicator) indicator.remove();
+      (window as any).__hackerModeReady = false;
+
+      // 恢复搜索框占位符
+      const searchInput = document.getElementById('search-modal-input');
+      if (searchInput) {
+        (searchInput as HTMLInputElement).placeholder = '输入关键词，按回车搜索...';
+      }
+
+      // 如果简约模式开启，添加黑客简约模式
+      if (document.documentElement.classList.contains('minimal-mode')) {
+        document.documentElement.classList.add('hacker-minimal');
+      }
+
+      // 切换文章显示：隐藏普通文章，显示黑客文章
+      filterPostsByMode('hacker');
+
+      console.log('[HACKER] 黑客模式已激活');
+    }
+
+    // 前端文章过滤：根据模式显示/隐藏文章
+    function filterPostsByMode(mode: 'normal' | 'hacker') {
+      // 过滤文章卡片
+      document.querySelectorAll('.post-card[data-post-type]').forEach(card => {
+        const postType = card.getAttribute('data-post-type');
+        if (mode === 'hacker') {
+          (card as HTMLElement).style.display = postType === 'hacker' ? '' : 'none';
+        } else {
+          (card as HTMLElement).style.display = postType === 'normal' ? '' : 'none';
+        }
+      });
+
+      // 更新文章计数
+      const visibleCards = document.querySelectorAll('.post-card[data-post-type]:not([style*="display: none"])').length;
+      const countEl = document.querySelector('.post-count');
+      if (countEl) {
+        countEl.textContent = `共 ${visibleCards} 篇文章`;
+      }
+    }
+
+    // 页面加载时，默认显示普通文章
+    function initPostFilter() {
+      filterPostsByMode('normal');
+    }
+
+    // 暴露全局方法：本地验证密钥
+    (window as any).__triggerHackerMode = function(key: string) {
+      const isReady = (window as any).__hackerModeReady;
+      if (!isReady) return false; // 未触发5次点击，不处理
+
+      const isValid = verifyHackerKeyLocal(key);
+      if (isValid) {
+        activateHackerMode();
+        return true;
+      }
+      return false;
+    };
+
+    // 初始化
+    setTimeout(initTrigger, 1000);
+    // 页面加载时初始化文章过滤
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPostFilter);
+    } else {
+      initPostFilter();
+    }
+  })();
+</script>
+
+<style is:global>
+  /* 像素闪烁动画 */
+  @keyframes pixel-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ============================================================
+     黑客模式 CSS 主题
+     老式复古黑客终端风格
+     黑底、青绿色系、等宽字体、微弱扫描线
+     ============================================================ */
+
+  /* 扫描线效果 */
+  html.hacker-mode::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+  }
+
+  html.hacker-mode {
+    --hacker-bg: #0a0a0a;
+    --hacker-bg-alt: #0d0d0d;
+    --hacker-fg: #00ff41;
+    --hacker-fg-dim: #008f11;
+    --hacker-fg-bright: #00ff88;
+    --hacker-border: #00ff41;
+    --hacker-border-dim: #003300;
+    --hacker-accent: #00ccff;
+    --hacker-warn: #ffff00;
+    --hacker-error: #ff3333;
+    --hacker-font: 'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  html.hacker-mode body {
+    background: var(--hacker-bg);
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .site-header {
+    background: var(--hacker-bg);
+    border-bottom: 2px solid var(--hacker-border-dim);
+    box-shadow: none;
+  }
+
+  html.hacker-mode .site-logo {
+    color: var(--hacker-fg);
+    text-shadow: 0 0 8px var(--hacker-fg);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .site-logo span {
+    color: var(--hacker-fg-bright);
+  }
+
+  html.hacker-mode .header-nav a {
+    color: var(--hacker-fg-dim);
+    font-family: var(--hacker-font);
+    border: 1px solid transparent;
+  }
+
+  html.hacker-mode .header-nav a:hover,
+  html.hacker-mode .header-nav a.active {
+    color: var(--hacker-fg);
+    border-color: var(--hacker-border);
+    background: rgba(0, 255, 65, 0.05);
+    text-shadow: 0 0 4px var(--hacker-fg);
+  }
+
+  html.hacker-mode .btn-icon {
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+    border: 1px solid var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .btn-icon:hover {
+    border-color: var(--hacker-fg);
+    text-shadow: 0 0 4px var(--hacker-fg);
+  }
+
+  html.hacker-mode .post-card {
+    background: var(--hacker-bg-alt);
+    border: 1px solid var(--hacker-border-dim);
+    border-radius: 0;
+    box-shadow: none;
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .post-card:hover {
+    border-color: var(--hacker-fg);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
+    transform: none;
+  }
+
+  html.hacker-mode .post-card-title {
+    color: var(--hacker-fg);
+    text-shadow: 0 0 2px var(--hacker-fg);
+  }
+
+  html.hacker-mode .post-card-summary {
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .post-card-meta {
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .tag {
+    background: rgba(0, 255, 65, 0.1);
+    border: 1px solid var(--hacker-border-dim);
+    color: var(--hacker-fg);
+    border-radius: 0;
+    font-family: var(--hacker-font);
+    font-size: 0.7rem;
+  }
+
+  html.hacker-mode .page-title {
+    color: var(--hacker-fg);
+    text-shadow: 0 0 8px var(--hacker-fg);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .page-subtitle {
+    color: var(--hacker-fg-dim);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .search-modal {
+    background: var(--hacker-bg);
+    border: 2px solid var(--hacker-fg);
+    border-radius: 0;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  }
+
+  html.hacker-mode .search-modal-header {
+    border-bottom: 1px solid var(--hacker-border-dim);
+    color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .search-modal-input {
+    background: var(--hacker-bg);
+    border: 2px solid var(--hacker-fg);
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .search-modal-input::placeholder {
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .search-modal-input:focus {
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+  }
+
+  html.hacker-mode .search-result-item {
+    background: var(--hacker-bg-alt);
+    border: 1px solid var(--hacker-border-dim);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .search-result-item:hover {
+    border-color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .search-result-title {
+    color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .search-result-excerpt {
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .settings-sidebar {
+    background: var(--hacker-bg);
+    border-left: 2px solid var(--hacker-fg);
+    box-shadow: none;
+  }
+
+  html.hacker-mode .settings-panel-title {
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .settings-section-title {
+    color: var(--hacker-fg-bright);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .settings-item {
+    background: var(--hacker-bg-alt);
+    border: 1px solid var(--hacker-border-dim);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .settings-radio {
+    background: var(--hacker-bg-alt);
+    border: 1px solid var(--hacker-border-dim);
+    border-radius: 0;
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .settings-radio:has(input:checked) {
+    border-color: var(--hacker-fg);
+    background: rgba(0, 255, 65, 0.1);
+    color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .theme-btn {
+    background: var(--hacker-bg);
+    border: 1px solid var(--hacker-border-dim);
+    color: var(--hacker-fg-dim);
+    font-family: var(--hacker-font);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .theme-btn.active {
+    background: var(--hacker-fg);
+    color: var(--hacker-bg);
+    border-color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .toggle-slider {
+    background: var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .toggle-switch input:checked + .toggle-slider {
+    background: var(--hacker-fg);
+  }
+
+  html.hacker-mode .settings-label {
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .site-footer {
+    border-top: 2px solid var(--hacker-border-dim);
+    color: var(--hacker-fg-dim);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .btn-primary {
+    background: var(--hacker-fg);
+    color: var(--hacker-bg);
+    border: 1px solid var(--hacker-fg);
+    font-family: var(--hacker-font);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .btn-outline {
+    border: 1px solid var(--hacker-fg);
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .btn-outline:hover {
+    background: rgba(0, 255, 65, 0.1);
+  }
+
+  html.hacker-mode .article-content {
+    font-family: var(--hacker-font);
+    color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .article-content h1,
+  html.hacker-mode .article-content h2,
+  html.hacker-mode .article-content h3 {
+    color: var(--hacker-fg-bright);
+    text-shadow: 0 0 4px var(--hacker-fg);
+  }
+
+  html.hacker-mode .article-content pre {
+    background: var(--hacker-bg);
+    border: 1px solid var(--hacker-border-dim);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .article-content code {
+    color: var(--hacker-fg);
+    background: rgba(0, 255, 65, 0.05);
+    font-family: var(--hacker-font);
+  }
+
+  html.hacker-mode .article-content blockquote {
+    border-left: 3px solid var(--hacker-fg);
+    color: var(--hacker-fg-dim);
+    background: rgba(0, 255, 65, 0.03);
+  }
+
+  html.hacker-mode .article-content a {
+    color: var(--hacker-accent);
+    text-decoration: underline;
+  }
+
+  html.hacker-mode .article-content table {
+    border-color: var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .article-content th {
+    background: rgba(0, 255, 65, 0.1);
+    border-color: var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .article-content td {
+    border-color: var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .post-card-cover-placeholder {
+    background: var(--hacker-bg-alt);
+    border-bottom: 1px solid var(--hacker-border-dim);
+  }
+
+  html.hacker-mode .empty-state {
+    color: var(--hacker-fg-dim);
+  }
+
+  html.hacker-mode .pagination .btn {
+    border-color: var(--hacker-border-dim);
+    color: var(--hacker-fg);
+    font-family: var(--hacker-font);
+    border-radius: 0;
+  }
+
+  html.hacker-mode .pagination .btn.active {
+    background: var(--hacker-fg);
+    color: var(--hacker-bg);
+    border-color: var(--hacker-fg);
+  }
+
+  html.hacker-mode .health-check-toggle {
+    background: var(--hacker-fg);
+    color: var(--hacker-bg);
+    border-radius: 0;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+  }
+
+  html.hacker-mode .health-check-popup {
+    background: var(--hacker-bg);
+    border: 2px solid var(--hacker-fg);
+    border-radius: 0;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  }
+
+  /* 黑客模式简约版 - 关闭扫描线和装饰 */
+  html.hacker-mode.hacker-minimal::before {
+    display: none;
+  }
+
+  html.hacker-mode.hacker-minimal .site-logo {
+    text-shadow: none;
+  }
+
+  html.hacker-mode.hacker-minimal .page-title {
+    text-shadow: none;
+  }
+
+  html.hacker-mode.hacker-minimal .post-card-title {
+    text-shadow: none;
+  }
+
+  /* 黑客模式响应式 */
+  html.hacker-mode .site-header {
+    padding: 0.5rem 0;
+  }
+
+  html.hacker-mode .search-modal {
+    width: 95%;
+    max-width: 640px;
+  }
+
+  html.hacker-mode .search-modal-input {
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+</style>

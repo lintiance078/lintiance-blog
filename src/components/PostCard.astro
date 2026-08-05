@@ -14,6 +14,7 @@ export interface Props {
   is_ascii: number;
   created_at: string;
   word_count: number;
+  post_type?: string;
 }
 
 const {
@@ -25,13 +26,14 @@ const {
   is_ascii,
   created_at,
   word_count,
+  post_type = 'normal',
 } = Astro.props;
 
 const tagList = parseTags(tags);
 const readingTime = estimateReadingTime(word_count);
 ---
 
-<article class="post-card animate-in">
+<article class="post-card animate-in" data-post-type={post_type}>
   <a href={`/posts/${slug}`} class="post-card-link" style="display:contents;color:inherit;">
     {
       cover_image ? (

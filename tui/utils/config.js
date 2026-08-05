@@ -129,4 +129,19 @@ export function getPostsDir() {
   return path.join(config.projectRoot, 'src', 'content', 'posts');
 }
 
-export default { loadConfig, saveConfig, getConfig, get, set, getProjectRoot, getImagesDir, getPostsDir };
+/** 获取黑客文章目录 */
+export function getHackerPostsDir() {
+  return path.join(config.projectRoot, 'src', 'content', 'hacker-posts');
+}
+
+/** 获取 .env 文件路径 */
+export function getEnvPath() {
+  return path.join(config.projectRoot, '.env');
+}
+
+/** 设置当前 TUI 模式 (normal/hacker) */
+let currentMode = 'normal';
+export function setMode(mode) { currentMode = mode; }
+export function getMode() { return currentMode; }
+
+export default { loadConfig, saveConfig, getConfig, get, set, getProjectRoot, getImagesDir, getPostsDir, getHackerPostsDir, getEnvPath, setMode, getMode };

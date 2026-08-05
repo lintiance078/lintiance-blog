@@ -39,3 +39,13 @@ npm-debug.log*
 
 # TUI state
 tui/.state.json
+
+# One-click scripts config (contains tokens/secrets)
+oneclick_scripts/*_config.ini
+oneclick_scripts/**/*_config.ini
+
+# Project local path file (contains local machine path)
+project_local_path.txt
+
+# Self-check reports (auto-generated)
+oneclick_scripts/*/check_report_*.txt

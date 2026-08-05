@@ -1,86 +1,100 @@
 ---
 slug: "typescript-tricks"
-title: "TypeScript 实用技巧：让类型系统为你工作"
+title: "TypeScript 类型系统深度实践：从工具类型到类型层面的编程"
 date: "2025-05-02"
-tags: ["TypeScript", "前端", "技术笔记"]
-summary: "分享日常开发中常用的 TypeScript 技巧，包括类型推导、工具类型、泛型约束等实用知识。"
+tags: ["TypeScript", "前端", "类型系统"]
+summary: "深入 TypeScript 类型系统的高级用法，包括条件类型、模板字面量类型、类型守卫模式，以及如何避免类型体操过度工程的实用建议。"
 cover: ""
 word_count: 0
 ---
 
-# TypeScript 实用技巧：让类型系统为你工作
+# TypeScript 类型系统深度实践：从工具类型到类型层面的编程
 
-刚开始用 TypeScript 的时候，觉得它就是在 JavaScript 上加了一层"类型注释"，写起来还更慢了。但用了一段时间后，发现一个好的类型系统能帮你提前发现很多隐患。
+TypeScript 的类型系统能力远超"给 JavaScript 加类型注解"。它是一个图灵完备的类型层面的编程语言。理解这一点，才能正确评估何时应该深入使用类型系统，何时应该适可而止。
 
-## 善用类型推导
+## 条件类型：类型层面的 if/else
 
-TypeScript 的类型推导很智能，不需要手动标注所有类型：
+条件类型允许根据类型关系做出类型层面的决策：
 
 ```typescript
-// ❌ 过度标注
-const name: string = "Alice";
-const age: number = 28;
-const items: string[] = ["a", "b"];
+// 提取 Promise 的内部类型
+type Unwrap<T> = T extends Promise<infer U> ? U : T;
 
-// ✅ 让 TypeScript 自己推导
-const name = "Alice";
-const age = 28;
-const items = ["a", "b"];
+type A = Unwrap<Promise<string>>;  // string
+type B = Unwrap<number>;           // number
+
+// 实际应用：提取 API 响应类型
+type ApiResponse<T> = T extends { data: infer D } ? D : never;
 ```
 
-## 工具类型
+`infer` 关键字是条件类型的核心——它在类型层面做模式匹配，从复杂类型中提取出子类型。
 
-TypeScript 内置了很多工具类型，可以组合出强大的类型定义：
+## 模板字面量类型：字符串层面的类型运算
+
+TypeScript 4.1+ 引入了模板字面量类型，可以在类型层面操作字符串：
 
 ```typescript
-// Partial：所有属性可选
-type PartialUser = Partial<User>;
+// 为事件系统生成类型安全的处理函数名
+type EventName = 'click' | 'focus' | 'blur';
+type HandlerName = `on${Capitalize<EventName>}`;
+// 'onClick' | 'onFocus' | 'onBlur'
 
-// Pick：选取部分属性
-type UserPreview = Pick<User, 'id' | 'name' | 'avatar'>;
-
-// Omit：排除部分属性
-type UserWithoutPassword = Omit<User, 'password'>;
-
-// Record：创建键值对类型
-type PageRoutes = Record<string, () => void>;
+// 实际应用：类型安全的路由参数提取
+type Route = `/users/${string}` | `/posts/${string}/comments`;
+type ExtractParam<T extends string> = 
+  T extends `${infer _Start}/${infer Param}/${infer _Rest}` 
+    ? Param 
+    : never;
 ```
 
-## 有用的模式
+## 类型守卫的实际模式
 
-### 使用 const 断言获得精确类型
-
-```typescript
-// 普通写法：类型是 string[]
-const colors = ['red', 'green', 'blue'];
-
-// const 断言：类型是 readonly ["red", "green", "blue"]
-const colors = ['red', 'green', 'blue'] as const;
-type Color = typeof colors[number]; // "red" | "green" | "blue"
-```
-
-### 使用 satisfies 验证类型
+`is` 类型守卫不仅用于基础类型判断，在数据验证层非常有用：
 
 ```typescript
-// 既验证类型，又保留精确值
-const config = {
-  port: 3000,
-  host: 'localhost',
-} satisfies Record<string, string | number>;
-```
+// 运行时验证 + 编译时类型收窄
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
 
-### 使用 is 做类型收窄
+function isUser(value: unknown): value is User {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value && typeof (value as User).id === 'number' &&
+    'name' in value && typeof (value as User).name === 'string' &&
+    'email' in value && typeof (value as User).email === 'string'
+  );
+}
 
-```typescript
-function isString(value: unknown): value is string {
-  return typeof value === 'string';
+// 使用：从 API 获取数据后验证
+const data: unknown = await fetch('/api/user').then(r => r.json());
+if (isUser(data)) {
+  // data 的类型在这里被收窄为 User
+  console.log(data.email.toUpperCase());
 }
 ```
 
-## 不要做的事情
+这种模式在处理外部数据（API 响应、localStorage、URL 参数）时特别有用，因为它同时提供了运行时安全和编译时类型安全。
 
-1. **不要滥用 `any`**：用了 `any` 就失去了 TypeScript 的意义
-2. **不要过度设计类型**：简单的类型比复杂的泛型更好维护
-3. **不要用 `as` 强制转换**：除非你确定自己比 TypeScript 更懂
+## 何时不要深入类型体操
 
-TypeScript 是一个工具，目的是帮你写出更好的代码，不是让你炫技。保持简单，按需使用。
+类型系统的一个陷阱是过度工程。判断标准：
+
+1. **如果类型定义比实现代码还长，重新考虑设计**。一个 50 行的泛型工具类型通常意味着你把运行时逻辑搬到了类型层面，这不是 TypeScript 的设计初衷
+2. **不要为了"完美类型"牺牲可读性**。一个 `Record<string, unknown>` 配合运行时的类型守卫，比一个 30 行的递归条件类型更容易维护
+3. **`as` 断言不是罪恶**。当你比 TypeScript 更了解类型时（比如从 JSON 解析后手动构造了对象），使用 `as` 是合理的。关键是确保断言前后有足够的运行时保证
+
+## 工具类型的实际使用频率
+
+在真实项目中，你 90% 的时间只需要这 5 个工具类型：
+
+- `Partial<T>`：表单草稿、配置选项
+- `Pick<T, K>`：API 响应中只暴露部分字段
+- `Omit<T, K>`：从类型中排除敏感字段（如 password）
+- `Record<K, V>`：键值映射，如路由表
+- `ReturnType<T>`：从函数类型中提取返回值类型
+
+TypeScript 的价值不是写出"类型体操冠军"级别的泛型，而是用最少的类型代码捕获最多的运行时错误。保持简单，按需使用。

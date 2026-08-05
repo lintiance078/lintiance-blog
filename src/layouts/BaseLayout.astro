@@ -6,8 +6,10 @@
 import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import SettingsPanel from '@components/SettingsPanel.astro';
-import HealthCheck from '@components/HealthCheck.astro';
+import Sidebar from '@components/Sidebar.astro';
 import MinimalModePrompt from '@components/MinimalModePrompt.astro';
+import HackerMode from '@components/HackerMode.astro';
+import SearchBox from '@components/SearchBox.astro';
 import '@styles/global.css';
 
 export interface Props {
@@ -105,6 +107,9 @@ const currentPath = Astro.url?.pathname || '/';
 <body>
   <Header currentPath={currentPath} />
 
+  <!-- 常驻左侧侧边栏 -->
+  <Sidebar />
+
   <main>
     <slot />
   </main>
@@ -114,11 +119,14 @@ const currentPath = Astro.url?.pathname || '/';
   <!-- 侧边设置面板 -->
   <SettingsPanel />
 
-  <!-- 站点健康检测 -->
-  <HealthCheck />
-
   <!-- 简约模式首次访问弹窗 -->
   <MinimalModePrompt />
+
+  <!-- 隐秘黑客模式 -->
+  <HackerMode />
+
+  <!-- 搜索弹窗（全局可用，保证所有页面搜索按钮都有效） -->
+  <SearchBox />
 
   <!-- 全局交互脚本 -->
   <script>

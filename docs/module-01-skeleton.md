@@ -16,7 +16,7 @@
 ## 2. 目录结构说明
 
 ```
-rin-blog/
+lintiance-blog/
 ├── astro.config.mjs          # Astro 配置：hybrid 模式 + Cloudflare 适配器
 ├── package.json              # 依赖管理：astro, pagefind, sharp, blessed, jimp 等
 ├── tsconfig.json             # TypeScript 配置，含路径别名
@@ -58,7 +58,7 @@ rin-blog/
 
 ### 3.1 wrangler.toml
 
-- **D1 绑定**：`BLOG_DB` → `rin-blog-db`，用于存储文章元数据
+- **D1 绑定**：`BLOG_DB` → `lintiance-blog-db`，用于存储文章元数据
 - **KV 绑定**：`BLOG_KV` → 用于存储站点配置 + 友链
 - 当前使用占位符 `YOUR_D1_DATABASE_ID` / `YOUR_KV_NAMESPACE_ID`，部署前需替换
 

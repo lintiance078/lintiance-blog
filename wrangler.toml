@@ -6,7 +6,7 @@
 # 仅允许 GET 只读接口，禁止 POST/PUT/DELETE
 # ============================================================
 
-name = "rin-blog"
+name = "lintiance-blog"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
@@ -15,20 +15,34 @@ pages_build_output_dir = "dist"
 # D1 数据库配置
 # 用途：存放文章元数据（标题、标签、发布时间、摘要）
 # 注意：文章正文存 Markdown 编译为静态 HTML，不入 D1
+# 
+# ⚠️ 部署前必做：替换占位符为实际的 D1 数据库 ID
+# 获取步骤：
+#   1. 登录 Cloudflare Dashboard → Workers & Pages → D1
+#   2. 创建数据库（如 rin-blog-db）或使用已有数据库
+#   3. 复制数据库 ID（格式如：xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx）
+#   4. 替换下方 database_id 的值
 # ----------------------------------------------------------
 [[d1_databases]]
 binding = "BLOG_DB"
-database_name = "rin-blog-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_name = "lintiance-blog-db"
+database_id = "7c8c4347-105f-443e-af4e-b80dfe1b0a6f"
 
 # ----------------------------------------------------------
 # KV 命名空间配置
 # 用途：存放网站全局默认配置、友链列表
 # 注意：KV 每日写入 1000 次限制，仅修改配置/友链时触发写入
+# 
+# ⚠️ 部署前必做：替换占位符为实际的 KV 命名空间 ID
+# 获取步骤：
+#   1. 登录 Cloudflare Dashboard → Workers & Pages → KV
+#   2. 创建命名空间（如 rin-blog-kv）或使用已有命名空间
+#   3. 复制命名空间 ID（格式如：xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx）
+#   4. 替换下方 id 的值
 # ----------------------------------------------------------
 [[kv_namespaces]]
 binding = "BLOG_KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "76ca8de923b14441b4732914ed00ffed"
 
 # ----------------------------------------------------------
 # 环境变量
@@ -37,13 +51,16 @@ id = "YOUR_KV_NAMESPACE_ID"
 SITE_TITLE = "林天策 Blog"
 SITE_DESCRIPTION = "A personal blog powered by Astro & Cloudflare Pages"
 DEFAULT_THEME = "light"
+HACKER_SECRET_KEY = "hunter2"
 
 # ----------------------------------------------------------
-# 开发环境配置
+# 开发环境配置（本地开发时使用）
+# ⚠️ 本地开发可选：替换占位符为开发环境资源 ID
+#    如不需要 D1/KV 本地开发，可保留占位符不替换
 # ----------------------------------------------------------
 [env.dev]
 d1_databases = [
-  { binding = "BLOG_DB", database_name = "rin-blog-db-dev", database_id = "YOUR_DEV_D1_ID" }
+  { binding = "BLOG_DB", database_name = "lintiance-blog-db-dev", database_id = "YOUR_DEV_D1_ID" }
 ]
 
 [[env.dev.kv_namespaces]]

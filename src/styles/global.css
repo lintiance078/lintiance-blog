@@ -142,8 +142,8 @@ img {
   z-index: 100;
   height: var(--header-height);
   background: var(--bg-header);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur, 8px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 8px));
   border-bottom: 1px solid var(--border-color);
   transition: background var(--transition-normal), border-color var(--transition-normal);
 }
@@ -551,8 +551,8 @@ img {
   opacity: 0;
   visibility: hidden;
   transition: all var(--transition-normal);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--glass-blur, 4px));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 4px));
 }
 
 .search-modal-overlay.active {
@@ -1014,6 +1014,8 @@ img {
 }
 
 /* 毛玻璃关闭 */
+html.no-glass .site-header,
+html.no-glass .site-footer,
 html.no-glass .settings-sidebar,
 html.no-glass .search-modal,
 html.no-glass .search-modal-overlay,
@@ -1070,18 +1072,149 @@ html.no-animation *::after {
   font-size: 1rem !important;
 }
 
+/* --- 常驻左侧侧边栏 --- */
+.site-sidebar {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  width: 260px;
+  height: calc(100vh - var(--header-height));
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+  z-index: 90;
+  transition: transform 0.3s ease;
+  padding: 1.5rem 1rem;
+  display: none; /* 默认隐藏，由 JS 控制 */
+}
+
+.site-sidebar.visible {
+  display: block;
+}
+
+.sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sidebar-section {
+  /* 侧边栏分区 */
+}
+
+.sidebar-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.sidebar-about-text {
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.sidebar-stats {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.sidebar-stat {
+  flex: 1;
+  text-align: center;
+  padding: 0.5rem;
+  background: var(--bg-page);
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-stat-num {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.sidebar-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.sidebar-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sidebar-tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-tag-item:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--bg-hover);
+}
+
+.sidebar-tag-count {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  background: var(--border-light);
+  padding: 0 0.3rem;
+  border-radius: 8px;
+}
+
+/* 侧边栏可见时，主内容区偏移 */
+body.has-sidebar main {
+  margin-left: 260px;
+}
+
+/* 响应式：小屏幕隐藏侧边栏 */
+@media (max-width: 1024px) {
+  body.has-sidebar main {
+    margin-left: 0;
+  }
+  .site-sidebar {
+    transform: translateX(-100%);
+  }
+  .site-sidebar.visible {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+    z-index: 200;
+  }
+}
+
+/* 毛玻璃关闭时也移除侧边栏 backdrop-filter */
+html.no-glass .site-sidebar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 /* --- 文章列表布局样式 --- */
 /* Grid 默认 */
 .posts-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(var(--grid-cols, 3), 1fr);
   gap: 1.5rem;
 }
 
 /* Masonry 瀑布流 */
 [data-layout="masonry"] .posts-grid {
-  display: columns;
-  column-count: 3;
+  display: block;
+  column-count: var(--masonry-cols, 1);
   column-gap: 1.5rem;
 }
 [data-layout="masonry"] .post-card {
@@ -1218,72 +1351,19 @@ html.no-animation *::after {
   }
 }
 
-/* --- 健康检测 --- */
-.health-check-panel {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 150;
-}
-
-.health-check-toggle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--text-inverse);
-  border: none;
-  cursor: pointer;
-  font-size: 1.2rem;
-  box-shadow: var(--shadow-lg);
-  transition: all var(--transition-normal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.health-check-toggle:hover {
-  transform: scale(1.08);
-  box-shadow: var(--shadow-xl);
-}
-
-.health-check-popup {
-  position: absolute;
-  bottom: 56px;
-  right: 0;
-  width: 320px;
-  max-height: 420px;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
-  overflow: hidden;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(12px);
-  transition: all var(--transition-normal);
-}
-
-.health-check-popup.active {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.health-check-header {
-  padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 600;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* --- 健康检测（嵌入设置面板） --- */
+.health-check-section {
+  /* 嵌入设置面板内，无需固定定位 */
 }
 
 .health-check-body {
-  padding: 1rem 1.25rem;
-  max-height: 300px;
+  padding: 0.5rem 0;
+  max-height: 240px;
   overflow-y: auto;
+}
+
+.health-check-actions {
+  /* 按钮容器 */
 }
 
 .health-item {
@@ -1437,11 +1517,6 @@ html.no-animation *::after {
 
   .site-logo {
     font-size: 1.1rem;
-  }
-
-  .health-check-popup {
-    width: calc(100vw - 3rem);
-    right: -0.5rem;
   }
 
   .page-title {
@@ -1674,21 +1749,6 @@ html.minimal-mode .btn {
   border-radius: 0;
 }
 
-html.minimal-mode .health-check-toggle {
-  box-shadow: none;
-  border-radius: 0;
-}
-
-html.minimal-mode .health-check-popup {
-  box-shadow: none;
-  border-radius: 0;
-  border: 1px solid #ddd;
-}
-
-html.minimal-mode .health-check-toggle:hover {
-  transform: none;
-}
-
 html.minimal-mode .pagination .btn {
   border-radius: 0;
 }
@@ -1697,6 +1757,19 @@ html.minimal-mode .minimal-prompt-card {
   box-shadow: none;
   border: 1px solid #ddd;
   border-radius: 0;
+}
+
+html.minimal-mode .site-sidebar {
+  box-shadow: none;
+  border-right: 1px solid #ddd;
+  background: #fff;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.minimal-mode[data-theme="dark"] .site-sidebar {
+  border-right-color: #333;
+  background: #1a1a1a;
 }
 
 html.minimal-mode .settings-overlay {
@@ -1713,7 +1786,7 @@ html.minimal-mode .search-modal-overlay {
 html.minimal-mode .post-card,
 html.minimal-mode .settings-sidebar,
 html.minimal-mode .search-modal,
-html.minimal-mode .health-check-popup {
+html.minimal-mode .health-check-section {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   background: #fff !important;
@@ -1722,6 +1795,99 @@ html.minimal-mode .health-check-popup {
 html.minimal-mode[data-theme="dark"] .post-card,
 html.minimal-mode[data-theme="dark"] .settings-sidebar,
 html.minimal-mode[data-theme="dark"] .search-modal,
-html.minimal-mode[data-theme="dark"] .health-check-popup {
+html.minimal-mode[data-theme="dark"] .health-check-section {
   background: #1a1a1a !important;
+}
+
+/* ============================================================
+   黑客文章访问保护 - Access Gate
+   ============================================================ */
+.hacker-post-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+.hacker-gate-content {
+  max-width: 480px;
+  padding: 3rem 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.hacker-gate-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+}
+
+.hacker-gate-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.hacker-gate-content p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.hacker-gate-hint {
+  font-size: 0.85rem !important;
+  color: var(--text-tertiary) !important;
+  margin-top: 1rem !important;
+  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-primary);
+}
+
+/* 黑客模式下的 gate 隐藏 */
+html.hacker-mode .hacker-post-gate {
+  display: none;
+}
+
+/* 黑客模式下的 gate 样式 */
+html.hacker-mode .hacker-gate-content {
+  background: var(--hacker-bg);
+  border: 2px solid var(--hacker-fg);
+  border-radius: 0;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+html.hacker-mode .hacker-gate-content h2 {
+  color: var(--hacker-fg);
+  font-family: var(--hacker-font);
+  text-shadow: 0 0 4px var(--hacker-fg);
+}
+
+html.hacker-mode .hacker-gate-content p {
+  color: var(--hacker-fg-dim);
+  font-family: var(--hacker-font);
+}
+
+html.hacker-mode .hacker-gate-hint {
+  background: rgba(0, 255, 65, 0.05);
+  border-left-color: var(--hacker-fg);
+  color: var(--hacker-fg-dim) !important;
+  font-family: var(--hacker-font);
+}
+
+/* 简约模式下的 gate */
+html.minimal-mode .hacker-gate-content {
+  box-shadow: none;
+  border-radius: 0;
+  border: 1px solid #ddd;
+}
+
+html.minimal-mode[data-theme="dark"] .hacker-gate-content {
+  background: #1a1a1a !important;
+  border-color: #444;
 }
