@@ -54,15 +54,6 @@ DEFAULT_THEME = "light"
 HACKER_SECRET_KEY = "hunter2"
 
 # ----------------------------------------------------------
-# 开发环境配置（本地开发时使用）
-# ⚠️ 本地开发可选：替换占位符为开发环境资源 ID
-#    如不需要 D1/KV 本地开发，可保留占位符不替换
+# 注意：Cloudflare Pages 仅支持 "preview" 和 "production" 环境，
+# 不支持自定义环境名。本地开发使用 npm run dev 即可。
 # ----------------------------------------------------------
-[env.dev]
-d1_databases = [
-  { binding = "BLOG_DB", database_name = "lintiance-blog-db-dev", database_id = "YOUR_DEV_D1_ID" }
-]
-
-[[env.dev.kv_namespaces]]
-binding = "BLOG_KV"
-id = "YOUR_DEV_KV_ID"
