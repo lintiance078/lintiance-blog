@@ -7,6 +7,7 @@ import Header from '@components/Header.astro';
 import Footer from '@components/Footer.astro';
 import SettingsPanel from '@components/SettingsPanel.astro';
 import HealthCheck from '@components/HealthCheck.astro';
+import MinimalModePrompt from '@components/MinimalModePrompt.astro';
 import '@styles/global.css';
 
 export interface Props {
@@ -16,7 +17,7 @@ export interface Props {
 }
 
 const {
-  title = 'Rin Blog',
+  title = '林天策 Blog',
   description = 'A personal blog powered by Astro & Cloudflare Pages',
   ogImage,
 } = Astro.props;
@@ -54,6 +55,39 @@ const currentPath = Astro.url?.pathname || '/';
 
   <title>{title}</title>
 
+  <!-- 全局错误处理：捕获渲染错误，显示友好提示 -->
+  <script is:inline>
+    (function() {
+      var originalError = console.error;
+      console.error = function() {
+        originalError.apply(console, arguments);
+      };
+
+      window.addEventListener('error', function(e) {
+        // 阻止默认的红色错误堆栈显示
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          console.error('[全局错误]', e.message);
+          e.preventDefault();
+        }
+        // 在控制台保留完整错误日志
+        console.error('[全局错误]', e.error || e.message);
+      }, true);
+
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('[未捕获的Promise错误]', e.reason);
+        e.preventDefault();
+      });
+
+      // 兜底：如果页面主要区域渲染失败，显示友好提示
+      document.addEventListener('DOMContentLoaded', function() {
+        var main = document.querySelector('main');
+        if (main && main.children.length === 0) {
+          main.innerHTML = '<div class="container" style="text-align:center;padding:4rem 1rem;"><div style="font-size:4rem;margin-bottom:1.5rem;">🔧</div><h1 style="font-size:1.4rem;font-weight:600;margin-bottom:0.75rem;">该页面正在开发中，敬请期待</h1><p style="color:var(--text-secondary);font-size:0.95rem;margin-bottom:2rem;">页面正在建设中，请稍后再来访问。</p><div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;"><a href="/" class="btn btn-primary">返回首页</a><a href="/articles" class="btn btn-outline">浏览文章</a></div></div>';
+        }
+      });
+    })();
+  </script>
+
   <!-- 内联主题初始化脚本：防止暗色模式闪烁 -->
   <script is:inline>
     (function () {
@@ -83,6 +117,9 @@ const currentPath = Astro.url?.pathname || '/';
   <!-- 站点健康检测 -->
   <HealthCheck />
 
+  <!-- 简约模式首次访问弹窗 -->
+  <MinimalModePrompt />
+
   <!-- 全局交互脚本 -->
   <script>
     import { applyTheme, getEffectiveTheme, initClickOutside, initKeyboardShortcuts } from '@lib/utils';
@@ -105,11 +142,81 @@ const currentPath = Astro.url?.pathname || '/';
     initKeyboardShortcuts();
 
     // 暴露全局 API
-    (window as any).__rinBlog = {
+    (window as any).__林天策Blog = {
       applyTheme,
       getEffectiveTheme,
       closeSettings,
     };
+
+    // ============================================================
+    // 导航滚动交互
+    // ============================================================
+    (function() {
+      const header = document.querySelector('.site-header');
+      if (!header) return;
+
+      let lastScrollY = window.scrollY;
+      let ticking = false;
+
+      function updateNavStyle(style) {
+        header?.classList.remove('nav-static', 'nav-sticky', 'nav-scroll-hide', 'nav-transparent', 'nav-shrink');
+        if (style && style !== 'static') {
+          header?.classList.add('nav-' + style);
+        }
+      }
+
+      function onScroll() {
+        const currentScrollY = window.scrollY;
+        const navStyle = document.documentElement.getAttribute('data-nav-style') || 'static';
+
+        if (navStyle === 'scroll-hide') {
+          // 下滑隐藏，上滑显示
+          if (currentScrollY > lastScrollY && currentScrollY > 80) {
+            header?.classList.add('nav-hidden');
+          } else {
+            header?.classList.remove('nav-hidden');
+          }
+        } else if (navStyle === 'transparent') {
+          // 滚动透明渐变
+          if (currentScrollY > 50) {
+            header?.classList.add('nav-solid');
+          } else {
+            header?.classList.remove('nav-solid');
+          }
+        } else if (navStyle === 'shrink') {
+          // 滚动收缩
+          if (currentScrollY > 50) {
+            header?.classList.add('nav-shrunk');
+          } else {
+            header?.classList.remove('nav-shrunk');
+          }
+        }
+
+        lastScrollY = currentScrollY;
+        ticking = false;
+      }
+
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(onScroll);
+          ticking = true;
+        }
+      }, { passive: true });
+
+      // 初始应用
+      const initialStyle = document.documentElement.getAttribute('data-nav-style') || 'static';
+      updateNavStyle(initialStyle);
+
+      // 监听设置变化
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach(m => {
+          if (m.attributeName === 'data-nav-style') {
+            updateNavStyle(document.documentElement.getAttribute('data-nav-style') || 'static');
+          }
+        });
+      });
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-nav-style'] });
+    })();
   </script>
 </body>
 </html>

@@ -1,68 +1,31 @@
-# Rin Blog
+# 林天策 Blog
 
-基于 Astro + Cloudflare Pages 的 Rin UI 风格个人博客系统。
+个人博客系统，基于 **Astro** + **Cloudflare Pages** + **D1** + **KV** 构建。
+
+风格克制朴素，注重性能和可访问性。
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 框架 | Astro v4 |
-| 部署 | Cloudflare Pages |
-| 数据库 | Cloudflare D1（文章元数据） |
-| 存储 | Cloudflare KV（站点配置、友链） |
-| 搜索 | Pagefind（构建期索引） |
-| 本地工具 | Windows TUI（Node.js + blessed） |
+- **框架**：Astro（静态站点生成 + Hybrid 模式）
+- **部署**：Cloudflare Pages + Pages Functions（仅 GET 只读接口）
+- **数据库**：Cloudflare D1（文章元数据）
+- **存储**：Cloudflare KV（站点配置、友链）
+- **搜索**：Pagefind（构建时索引，浏览器端本地检索）
+- **本地工具**：Windows TUI（Node.js + blessed）
 
-## 项目结构
+## 功能特性
 
-```
-rin-blog/
-├── astro.config.mjs          # Astro 配置文件
-├── package.json              # 项目依赖与脚本
-├── tsconfig.json             # TypeScript 配置
-├── wrangler.toml             # Cloudflare Wrangler 配置（D1 + KV 绑定）
-├── .gitignore
-├── kv-seed.json              # KV 初始化数据（脚本生成）
-│
-├── sql/
-│   └── schema.sql            # D1 建表 SQL
-│
-├── scripts/
-│   ├── build-check.js        # 构建前自检脚本
-│   └── kv-seed.js            # KV 初始化脚本
-│
-├── functions/                # Pages Functions（仅 GET 接口）
-│   └── api/
-│       ├── posts.ts          # GET /api/posts      - 文章列表
-│       ├── posts/[id].ts     # GET /api/posts/:id  - 文章详情
-│       ├── tags.ts           # GET /api/tags       - 标签列表
-│       ├── config.ts         # GET /api/config     - 站点配置
-│       └── friends.ts        # GET /api/friends    - 友链列表
-│
-├── src/
-│   ├── config/
-│   │   ├── site.config.ts    # 站点默认配置
-│   │   └── kv-defaults.json  # KV 默认值
-│   ├── content/
-│   │   └── posts/            # Markdown 博客文章
-│   ├── pages/                # Astro 页面
-│   ├── layouts/              # 布局组件
-│   ├── components/           # UI 组件
-│   ├── styles/               # CSS 样式
-│   └── lib/                  # 工具函数
-│
-├── public/
-│   └── assets/
-│       └── images/           # 图片资源（跟随 Git 提交）
-│
-├── tui/                      # Windows TUI 终端工具
-│   ├── index.js              # 入口
-│   ├── menus/                # 菜单模块
-│   ├── modules/              # 功能模块
-│   └── utils/                # 工具函数
-│
-└── docs/                     # 文档
-```
+- 📝 Markdown 文章写作，本地 TUI 管理
+- 🔍 模态搜索弹窗，Pagefind 全文检索
+- 🎨 多主题切换（浅色/深色/自动）
+- 📐 5 种文章布局（Grid、Masonry、List、Card-List、Timeline）
+- 🧭 5 种导航交互（静态、Sticky、滚动显隐、透明渐变、收缩）
+- 🃏 4 种卡片风格（圆角阴影、简约无边框、封面置顶、背景虚化）
+- 🧩 简约模式（一键关闭所有装饰特效）
+- 🖼️ 图片压缩 + ASCII 字符画转换
+- 🏷️ 标签分类与筛选
+- 📱 响应式设计，移动端适配
+- ♿ 性能优化：懒加载、防抖节流、降级兜底
 
 ## 快速开始
 
@@ -80,14 +43,30 @@ npm run build
 npm run tui
 ```
 
+## 项目结构
+
+```
+rin-blog/
+├── src/
+│   ├── components/     # Astro 组件
+│   ├── layouts/        # 布局组件
+│   ├── pages/          # 路由页面
+│   ├── content/posts/  # Markdown 文章
+│   ├── styles/         # 全局样式
+│   ├── lib/            # 工具函数
+│   └── config/         # 站点配置
+├── functions/api/      # Pages Functions（GET 只读）
+├── tui/                # 本地 TUI 工具
+├── scripts/            # 构建脚本
+├── sql/                # D1 数据库 Schema
+├── docs/               # 文档教程
+└── public/             # 静态资源
+```
+
 ## 部署
 
-1. 在 Cloudflare 后台创建 D1 数据库和 KV 命名空间
-2. 将 ID 填入 `wrangler.toml`
-3. 初始化 D1 表结构：`npx wrangler d1 execute BLOG_DB --local --file=sql/schema.sql`
-4. 初始化 KV 配置：`node scripts/kv-seed.js && npx wrangler kv:bulk put --binding=BLOG_KV --local kv-seed.json`
-5. 推送至 GitHub，触发 Cloudflare Pages 自动部署
+详细部署教程请参考 [docs/04-Pages部署教程.md](docs/04-Pages部署教程.md)
 
-## 降级方案
+## License
 
-删除 `functions/` 文件夹后，项目自动退化为纯静态博客，无需 D1/KV。
+MIT

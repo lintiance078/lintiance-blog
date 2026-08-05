@@ -2,7 +2,7 @@
   "name": "rin-blog",
   "version": "1.0.0",
   "type": "module",
-  "description": "Rin UI风格个人博客 - Astro + Cloudflare Pages + D1 + KV",
+  "description": "林天策 Blog - Astro + Cloudflare Pages + D1 + KV 个人博客系统",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",

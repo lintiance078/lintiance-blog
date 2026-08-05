@@ -90,7 +90,7 @@ export async function runPipeline(commitMessage = '') {
     // 生成默认提交信息
     if (!commitMessage) {
       const now = new Date().toLocaleString('zh-CN');
-      commitMessage = `[Rin Blog] 自动部署 - ${now}`;
+      commitMessage = `[林天策 Blog] 自动部署 - ${now}`;
     }
 
     // git add
@@ -175,7 +175,7 @@ export async function gitPushOnly(commitMessage = '') {
     }
 
     if (!commitMessage) {
-      commitMessage = `[Rin Blog] 更新 - ${new Date().toLocaleString('zh-CN')}`;
+      commitMessage = `[林天策 Blog] 更新 - ${new Date().toLocaleString('zh-CN')}`;
     }
 
     execSync('git add -A', { encoding: 'utf-8', cwd: root, stdio: 'inherit' });

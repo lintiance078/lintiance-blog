@@ -8,7 +8,7 @@ import figlet from 'figlet';
 import chalk from 'chalk';
 
 /** 生成彩色 ASCII Banner */
-export function generateBanner(text = 'Rin Blog') {
+export function generateBanner(text = '林天策 Blog') {
   return new Promise((resolve, reject) => {
     figlet.text(text, {
       font: 'Standard',
@@ -42,7 +42,7 @@ export function generateSubtitle(text) {
 }
 
 /** 同步生成 banner（用于 blessed 渲染） */
-export function generateBannerSync(text = 'Rin Blog') {
+export function generateBannerSync(text = '林天策 Blog') {
   try {
     return figlet.textSync(text, {
       font: 'Standard',

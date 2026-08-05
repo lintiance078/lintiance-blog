@@ -1,0 +1,67 @@
+---
+// ============================================================
+// MinimalModePrompt - 简约模式首次访问弹窗
+// ============================================================
+---
+
+<div id="minimal-prompt-overlay" class="minimal-prompt-overlay">
+  <div class="minimal-prompt-card">
+    <div class="minimal-prompt-icon">🎨</div>
+    <h2 class="minimal-prompt-title">是否进入简约模式？</h2>
+    <p class="minimal-prompt-desc">
+      简约模式将关闭全部装饰特效，使用最朴素网页样式，提升低配设备浏览速度。
+    </p>
+    <div class="minimal-prompt-actions">
+      <button class="btn btn-outline" id="minimal-prompt-no">否，保持原样</button>
+      <button class="btn btn-primary" id="minimal-prompt-yes">是，开启简约</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const overlay = document.getElementById('minimal-prompt-overlay');
+    const btnYes = document.getElementById('minimal-prompt-yes');
+    const btnNo = document.getElementById('minimal-prompt-no');
+
+    // 检查是否已经设置过简约模式
+    const hasVisited = localStorage.getItem('lintiance_minimal_visited');
+    const minimalMode = localStorage.getItem('lintiance_minimal_mode');
+
+    // 如果已经设置过，直接应用对应模式
+    if (minimalMode === 'true') {
+      document.documentElement.classList.add('minimal-mode');
+    } else if (minimalMode === 'false') {
+      document.documentElement.classList.remove('minimal-mode');
+    }
+
+    // 如果未访问过，显示弹窗
+    if (!hasVisited) {
+      setTimeout(() => {
+        overlay?.classList.add('active');
+      }, 800);
+    }
+
+    function setMinimalMode(enabled: boolean) {
+      localStorage.setItem('lintiance_minimal_visited', 'true');
+      localStorage.setItem('lintiance_minimal_mode', String(enabled));
+      if (enabled) {
+        document.documentElement.classList.add('minimal-mode');
+      } else {
+        document.documentElement.classList.remove('minimal-mode');
+      }
+      overlay?.classList.remove('active');
+    }
+
+    btnYes?.addEventListener('click', () => setMinimalMode(true));
+    btnNo?.addEventListener('click', () => setMinimalMode(false));
+
+    // 暴露全局方法供设置面板使用
+    (window as any).__toggleMinimalMode = (enabled: boolean) => {
+      setMinimalMode(enabled);
+    };
+    (window as any).__isMinimalMode = () => {
+      return document.documentElement.classList.contains('minimal-mode');
+    };
+  })();
+</script>

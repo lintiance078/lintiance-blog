@@ -1,5 +1,5 @@
 # ============================================================
-# Rin Blog - Cloudflare Pages 项目配置文件
+# 林天策 Blog - Cloudflare Pages 项目配置文件
 # ============================================================
 # 部署目标：Cloudflare Pages
 # 运行时：Node.js (Pages Functions)
@@ -34,7 +34,7 @@ id = "YOUR_KV_NAMESPACE_ID"
 # 环境变量
 # ----------------------------------------------------------
 [vars]
-SITE_TITLE = "Rin Blog"
+SITE_TITLE = "林天策 Blog"
 SITE_DESCRIPTION = "A personal blog powered by Astro & Cloudflare Pages"
 DEFAULT_THEME = "light"
 

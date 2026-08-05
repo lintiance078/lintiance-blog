@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * Rin Blog - Windows TUI 终端工具 (主入口)
+ * 林天策 Blog - Windows TUI 终端工具 (主入口)
  * ============================================================
  * 基于 blessed + blessed-contrib 实现 ANSI 彩色终端界面
  * 功能：ASCII Banner、方向键菜单、输入框、进度条
@@ -36,7 +36,7 @@ loadConfig();
 // ============================================================
 const screen = blessed.screen({
   smartCSR: true,
-  title: 'Rin Blog TUI - 博客管理工具',
+  title: '林天策 Blog TUI - 博客管理工具',
   fullUnicode: true,
   mouse: true,
 });
@@ -131,7 +131,7 @@ const bottomBar = blessed.text({
   left: 0,
   width: '100%',
   height: 1,
-  content: ' Rin Blog TUI | v1.0 | Tab 切换焦点 | ↑↓ 导航 | Enter 确认 | Esc 返回 | Ctrl+C 退出',
+  content: ' 林天策 Blog TUI | v1.0 | Tab 切换焦点 | ↑↓ 导航 | Enter 确认 | Esc 返回 | Ctrl+C 退出',
   style: {
     fg: 'black',
     bg: 'cyan',
@@ -288,7 +288,7 @@ function setStatus(text, color = 'green') {
 // Banner 渲染
 // ============================================================
 function renderBanner() {
-  const banner = generateBannerSync('Rin  Blog');
+  const banner = generateBannerSync('林天策 Blog');
   bannerBox.setContent(banner);
   screen.render();
 }
@@ -806,7 +806,7 @@ screen.key(['tab'], () => {
 // 启动
 // ============================================================
 renderBanner();
-contentBox.add('{green-fg}欢迎使用 Rin Blog TUI 终端管理工具{/green-fg}');
+contentBox.add('{green-fg}欢迎使用 林天策 Blog TUI 终端管理工具{/green-fg}');
 contentBox.add('使用 ↑↓ 方向键选择菜单，Enter 确认');
 contentBox.add('');
 

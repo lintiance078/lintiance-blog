@@ -1,9 +1,8 @@
 ---
 // ============================================================
-// SettingsPanel - 侧边弹出设置面板（Rin 风格）
-// 功能：主题切换、站点参数展示
-// 优先读取 localStorage，缺失时调用 KV 接口
-// 网页不能修改 KV 全局配置
+// SettingsPanel - 扩展版侧边设置面板
+// 包含主题、布局、导航、卡片、毛玻璃、动效、简约模式等
+// 所有设置存储于 localStorage，仅本机浏览器生效
 // ============================================================
 ---
 
@@ -16,9 +15,7 @@
       class="settings-panel-close"
       onclick="document.getElementById('settings-panel')?.classList.remove('active');document.getElementById('settings-overlay')?.classList.remove('active');document.body.style.overflow=''"
       aria-label="关闭设置"
-    >
-      ✕
-    </button>
+    >✕</button>
   </div>
 
   <div class="settings-panel-body">
@@ -26,27 +23,92 @@
     <div class="settings-section">
       <h4 class="settings-section-title">🎨 主题</h4>
       <div class="theme-toggle-group">
-        <button
-          class="theme-btn active"
-          data-theme-value="light"
-          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.documentElement.setAttribute('data-theme','light');localStorage.setItem('rin_theme',JSON.stringify('light'))"
-        >
-          ☀️ 浅色
-        </button>
-        <button
-          class="theme-btn"
-          data-theme-value="dark"
-          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.documentElement.setAttribute('data-theme','dark');localStorage.setItem('rin_theme',JSON.stringify('dark'))"
-        >
-          🌙 深色
-        </button>
-        <button
-          class="theme-btn"
-          data-theme-value="auto"
-          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');const m=window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',m?'dark':'light');localStorage.setItem('rin_theme',JSON.stringify('auto'))"
-        >
-          🔄 自动
-        </button>
+        <button class="theme-btn active" data-theme-value="light"
+          onclick="setTheme('light')">☀️ 浅色</button>
+        <button class="theme-btn" data-theme-value="dark"
+          onclick="setTheme('dark')">🌙 深色</button>
+        <button class="theme-btn" data-theme-value="auto"
+          onclick="setTheme('auto')">🔄 自动</button>
+      </div>
+    </div>
+
+    <!-- 简约模式 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">🧩 简约模式</h4>
+      <div class="settings-item">
+        <span class="settings-label">简约模式</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="toggle-minimal" onchange="toggleMinimalMode(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p class="settings-hint">💡 主题偏好保存在浏览器本地。站点配置仅管理员可通过本地 TUI 工具修改。</p>
+    </div>
+
+    <!-- 文章列表布局 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">📐 文章列表布局</h4>
+      <div class="settings-radio-group" data-setting="layout">
+        <label class="settings-radio"><input type="radio" name="layout" value="grid" checked onchange="applySetting('layout',this.value)"> Grid 均等网格</label>
+        <label class="settings-radio"><input type="radio" name="layout" value="masonry" onchange="applySetting('layout',this.value)"> Masonry 瀑布流</label>
+        <label class="settings-radio"><input type="radio" name="layout" value="list" onchange="applySetting('layout',this.value)"> List 纯列表</label>
+        <label class="settings-radio"><input type="radio" name="layout" value="card-list" onchange="applySetting('layout',this.value)"> Card-List 混合</label>
+        <label class="settings-radio"><input type="radio" name="layout" value="timeline" onchange="applySetting('layout',this.value)"> Timeline 时间轴</label>
+      </div>
+      <p class="settings-hint">仅首页、文章列表页生效；文章详情固定单列阅读</p>
+    </div>
+
+    <!-- 顶部导航交互 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">🧭 导航交互</h4>
+      <div class="settings-radio-group" data-setting="nav-style">
+        <label class="settings-radio"><input type="radio" name="nav-style" value="static" checked onchange="applySetting('nav-style',this.value)"> 静态导航</label>
+        <label class="settings-radio"><input type="radio" name="nav-style" value="sticky" onchange="applySetting('nav-style',this.value)"> Sticky 固定置顶</label>
+        <label class="settings-radio"><input type="radio" name="nav-style" value="scroll-hide" onchange="applySetting('nav-style',this.value)"> 下滑隐藏/上滑显示</label>
+        <label class="settings-radio"><input type="radio" name="nav-style" value="transparent" onchange="applySetting('nav-style',this.value)"> 滚动透明渐变</label>
+        <label class="settings-radio"><input type="radio" name="nav-style" value="shrink" onchange="applySetting('nav-style',this.value)"> 滚动收缩导航</label>
+      </div>
+    </div>
+
+    <!-- 文章卡片风格 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">🃏 卡片风格</h4>
+      <div class="settings-radio-group" data-setting="card-style">
+        <label class="settings-radio"><input type="radio" name="card-style" value="shadow" checked onchange="applySetting('card-style',this.value)"> 圆角阴影悬浮</label>
+        <label class="settings-radio"><input type="radio" name="card-style" value="borderless" onchange="applySetting('card-style',this.value)"> 简约无边框</label>
+        <label class="settings-radio"><input type="radio" name="card-style" value="cover-top" onchange="applySetting('card-style',this.value)"> 封面图置顶</label>
+        <label class="settings-radio"><input type="radio" name="card-style" value="blur-cover" onchange="applySetting('card-style',this.value)"> 背景虚化封面</label>
+      </div>
+    </div>
+
+    <!-- 侧边栏组件 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">📑 侧边栏组件</h4>
+      <div class="settings-item">
+        <span class="settings-label">文章悬浮 TOC</span>
+        <label class="toggle-switch"><input type="checkbox" checked id="toggle-toc" onchange="applyToggle('toc',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-item">
+        <span class="settings-label">标签云</span>
+        <label class="toggle-switch"><input type="checkbox" checked id="toggle-tagcloud" onchange="applyToggle('tagcloud',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- 全局毛玻璃 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">🫧 毛玻璃效果</h4>
+      <div class="settings-item">
+        <span class="settings-label">全局毛玻璃</span>
+        <label class="toggle-switch"><input type="checkbox" checked id="toggle-glass" onchange="applyToggle('glass',this.checked)"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <!-- 页面动效 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">✨ 页面动效</h4>
+      <div class="settings-item">
+        <span class="settings-label">入场动画</span>
+        <label class="toggle-switch"><input type="checkbox" checked id="toggle-animation" onchange="applyToggle('animation',this.checked)"><span class="toggle-slider"></span></label>
       </div>
     </div>
 
@@ -56,7 +118,7 @@
       <div class="settings-group">
         <div class="settings-item">
           <span class="settings-label">站点名称</span>
-          <span style="font-size:0.85rem;color:var(--text-secondary)" id="config-site-title">Rin Blog</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)" id="config-site-title">林天策 Blog</span>
         </div>
         <div class="settings-item">
           <span class="settings-label">作者</span>
@@ -72,43 +134,149 @@
         </div>
       </div>
     </div>
-
-    <!-- 说明 -->
-    <div class="settings-section">
-      <p style="font-size:0.8rem;color:var(--text-tertiary);line-height:1.6;">
-        💡 主题偏好保存在浏览器本地。<br />
-        站点配置仅管理员可通过本地 TUI 工具修改。
-      </p>
-    </div>
   </div>
 </aside>
 
 <script>
-  // 初始化主题按钮状态
+  // ============================================================
+  // 设置管理器
+  // ============================================================
   (function() {
+    const STORAGE_KEY = 'lintiance_settings';
+
+    // 默认设置
+    const defaults = {
+      layout: 'grid',
+      'nav-style': 'static',
+      'card-style': 'shadow',
+      toc: true,
+      tagcloud: true,
+      glass: true,
+      animation: true,
+    };
+
+    function getSettings() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? { ...defaults, ...JSON.parse(stored) } : { ...defaults };
+      } catch {
+        return { ...defaults };
+      }
+    }
+
+    function saveSettings(settings) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    // 应用设置到 DOM
+    function applyToDOM(settings) {
+      const html = document.documentElement;
+
+      // 布局
+      html.setAttribute('data-layout', settings.layout);
+      html.setAttribute('data-nav-style', settings['nav-style']);
+      html.setAttribute('data-card-style', settings['card-style']);
+
+      // 毛玻璃
+      html.classList.toggle('no-glass', !settings.glass);
+
+      // 动效
+      html.classList.toggle('no-animation', !settings.animation);
+    }
+
+    // 初始化 UI 控件状态
+    function initControls() {
+      const settings = getSettings();
+
+      // 单选按钮
+      document.querySelectorAll('.settings-radio-group').forEach(group => {
+        const setting = group.dataset.setting;
+        if (setting && settings[setting]) {
+          const radio = group.querySelector(`input[value="${settings[setting]}"]`);
+          if (radio) radio.checked = true;
+        }
+      });
+
+      // 开关
+      const toggleMap = {
+        'toggle-toc': 'toc',
+        'toggle-tagcloud': 'tagcloud',
+        'toggle-glass': 'glass',
+        'toggle-animation': 'animation',
+      };
+
+      Object.entries(toggleMap).forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = settings[key] !== false;
+      });
+
+      // 简约模式
+      const minimalToggle = document.getElementById('toggle-minimal');
+      if (minimalToggle) {
+        minimalToggle.checked = document.documentElement.classList.contains('minimal-mode');
+      }
+
+      applyToDOM(settings);
+    }
+
+    // 暴露全局方法
+    window.setTheme = function(theme) {
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.querySelector(`[data-theme-value="${theme}"]`);
+      if (btn) btn.classList.add('active');
+      if (theme === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+      localStorage.setItem('rin_theme', JSON.stringify(theme));
+    };
+
+    window.applySetting = function(key, value) {
+      const settings = getSettings();
+      settings[key] = value;
+      saveSettings(settings);
+      applyToDOM(settings);
+    };
+
+    window.applyToggle = function(key, value) {
+      applySetting(key, value);
+    };
+
+    window.toggleMinimalMode = function(enabled) {
+      if (enabled) {
+        document.documentElement.classList.add('minimal-mode');
+      } else {
+        document.documentElement.classList.remove('minimal-mode');
+      }
+      localStorage.setItem('lintiance_minimal_visited', 'true');
+      localStorage.setItem('lintiance_minimal_mode', String(enabled));
+    };
+
+    // 初始化主题按钮
     const stored = localStorage.getItem('rin_theme');
     const theme = stored ? JSON.parse(stored) : 'auto';
     document.querySelectorAll('.theme-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.themeValue === theme);
     });
-  })();
 
-  // 异步加载站点配置
-  (async function() {
-    try {
-      const resp = await fetch('/api/config');
-      const json = await resp.json();
-      if (json.success && json.data) {
-        const site = json.data.site;
-        if (site) {
+    // 初始化控件
+    initControls();
+
+    // 异步加载站点配置
+    (async function() {
+      try {
+        const resp = await fetch('/api/config');
+        const json = await resp.json();
+        if (json.success && json.data?.site) {
+          const site = json.data.site;
           const titleEl = document.getElementById('config-site-title');
           const authorEl = document.getElementById('config-author');
           if (titleEl && site.title) titleEl.textContent = site.title;
           if (authorEl && site.author) authorEl.textContent = site.author;
         }
-      }
-    } catch {
-      // 接口不可用时使用默认值，静默失败
-    }
+      } catch { /* 静默失败 */ }
+    })();
   })();
 </script>

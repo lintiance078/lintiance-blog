@@ -1,11 +1,10 @@
 ---
 // ============================================================
-// 文章列表页 - 展示所有文章
-// 支持分页（静态模式）
+// 文章列表页 /articles - 展示所有文章
+// 支持分页，继承布局和所有样式配置
 // ============================================================
 import BaseLayout from '@layouts/BaseLayout.astro';
 import PostCard from '@components/PostCard.astro';
-import SearchBox from '@components/SearchBox.astro';
 
 const posts = await Astro.glob('../../content/posts/*.md');
 
@@ -30,12 +29,13 @@ const postList = posts
       <p class="page-subtitle">共 {postList.length} 篇文章</p>
     </div>
 
-    <SearchBox />
-
     {postList.length === 0 ? (
       <div class="empty-state">
         <div class="empty-state-icon">📝</div>
-        <p class="empty-state-text">还没有文章</p>
+        <p class="empty-state-text">还没有文章，开始创作吧！</p>
+        <p style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-tertiary);">
+          使用本地 TUI 工具创建 Markdown 文章
+        </p>
       </div>
     ) : (
       <div class="posts-grid">

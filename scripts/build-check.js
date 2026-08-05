@@ -171,7 +171,7 @@ function checkDistFileCount() {
 
 // 执行所有检查
 console.log('\n========================================');
-console.log('  Rin Blog - 构建前自检');
+console.log('  林天策 Blog - 构建前自检');
 console.log('========================================');
 
 checkDirectories();

@@ -9,7 +9,7 @@
 
 export const SITE_CONFIG = {
   // 站点基本信息
-  title: 'Rin Blog',
+  title: '林天策 Blog',
   subtitle: 'A personal blog',
   description: '记录技术、生活与思考',
   author: 'Blog Author',
@@ -41,7 +41,7 @@ export const SITE_CONFIG = {
 
   // 页脚
   footer: {
-    copyright: '© 2025 Rin Blog. All rights reserved.',
+    copyright: '© 2025 林天策 Blog. All rights reserved.',
     icp: '',                // ICP 备案号（可选）
     poweredBy: 'Astro + Cloudflare Pages',
   },
