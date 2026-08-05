@@ -1,0 +1,33 @@
+---
+// ============================================================
+// 标签分类页 - 展示所有标签云
+// ============================================================
+import BaseLayout from '@layouts/BaseLayout.astro';
+import TagList from '@components/TagList.astro';
+
+const posts = await Astro.glob('../../content/posts/*.md');
+
+// 统计标签
+const tagCountMap = new Map<string, number>();
+posts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((tag: string) => {
+    tagCountMap.set(tag, (tagCountMap.get(tag) || 0) + 1);
+  });
+});
+
+const tagItems = Array.from(tagCountMap.entries())
+  .map(([name, count]) => ({ id: 0, name, count }))
+  .sort((a, b) => b.count - a.count);
+---
+
+<BaseLayout title="标签分类 - Rin Blog" description="按标签浏览文章">
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">🏷️ 标签分类</h1>
+      <p class="page-subtitle">共 {tagItems.length} 个标签</p>
+    </div>
+
+    <TagList tags={tagItems} />
+  </div>
+</BaseLayout>

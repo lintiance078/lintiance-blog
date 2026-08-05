@@ -1,0 +1,30 @@
+---
+// ============================================================
+// TagList - 标签列表组件
+// ============================================================
+import type { TagItem } from '@lib/api';
+
+export interface Props {
+  tags: TagItem[];
+  activeTag?: string;
+}
+
+const { tags, activeTag } = Astro.props;
+---
+
+<div class="tags-cloud">
+  {tags.length === 0 ? (
+    <p class="empty-state-text">暂无标签</p>
+  ) : (
+    tags.map(tag => (
+      <a
+        href={`/tags/${tag.name}`}
+        class={`tag-item ${activeTag === tag.name ? 'active' : ''}`}
+        style={activeTag === tag.name ? 'background:var(--color-primary);color:var(--text-inverse);border-color:var(--color-primary);' : ''}
+      >
+        {tag.name}
+        <span class="count">{tag.count}</span>
+      </a>
+    ))
+  )}
+</div>

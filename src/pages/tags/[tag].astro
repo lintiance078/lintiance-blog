@@ -1,0 +1,81 @@
+---
+// ============================================================
+// 按标签筛选文章列表页 - 动态路由 [tag]
+// ============================================================
+import BaseLayout from '@layouts/BaseLayout.astro';
+import PostCard from '@components/PostCard.astro';
+import TagList from '@components/TagList.astro';
+
+export async function getStaticPaths() {
+  const posts = await Astro.glob('../../content/posts/*.md');
+  const tagSet = new Set<string>();
+  posts.forEach(post => {
+    const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+    tags.forEach((tag: string) => tagSet.add(tag));
+  });
+  return Array.from(tagSet).map(tag => ({
+    params: { tag },
+    props: { tag },
+  }));
+}
+
+const { tag } = Astro.props;
+
+const posts = await Astro.glob('../../content/posts/*.md');
+
+// 筛选包含该标签的文章
+const filteredPosts = posts
+  .filter(post => {
+    const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+    return tags.includes(tag);
+  })
+  .map(post => ({
+    slug: post.frontmatter.slug || post.file.split('/').pop()?.replace('.md', '') || '',
+    title: post.frontmatter.title || 'Untitled',
+    summary: post.frontmatter.summary || '',
+    tags: Array.isArray(post.frontmatter.tags) ? JSON.stringify(post.frontmatter.tags) : '[]',
+    cover_image: post.frontmatter.cover || '',
+    is_ascii: post.frontmatter.cover_ascii ? 1 : 0,
+    created_at: post.frontmatter.date || new Date().toISOString(),
+    word_count: post.frontmatter.word_count || 0,
+  }))
+  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+// 统计所有标签
+const tagCountMap = new Map<string, number>();
+posts.forEach(post => {
+  const tags = Array.isArray(post.frontmatter.tags) ? post.frontmatter.tags : [];
+  tags.forEach((t: string) => {
+    tagCountMap.set(t, (tagCountMap.get(t) || 0) + 1);
+  });
+});
+const tagItems = Array.from(tagCountMap.entries())
+  .map(([name, count]) => ({ id: 0, name, count }))
+  .sort((a, b) => b.count - a.count);
+---
+
+<BaseLayout title={`标签: ${tag} - Rin Blog`} description={`浏览标签为"${tag}"的文章`}>
+  <div class="container">
+    <div class="page-header">
+      <h1 class="page-title">
+        🏷️ <span style="color:var(--color-primary);">#{tag}</span>
+      </h1>
+      <p class="page-subtitle">共 {filteredPosts.length} 篇文章</p>
+    </div>
+
+    <TagList tags={tagItems} activeTag={tag} />
+
+    {filteredPosts.length === 0 ? (
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <p class="empty-state-text">该标签下暂无文章</p>
+      </div>
+    ) : (
+      <div class="posts-grid">
+        {filteredPosts.map(post => (
+          <PostCard {...post} />
+        ))}
+      </div>
+    )}
+  </div>
+</BaseLayout>

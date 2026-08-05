@@ -1,0 +1,39 @@
+{
+  "site": {
+    "title": "Rin Blog",
+    "subtitle": "A personal blog",
+    "description": "记录技术、生活与思考",
+    "author": "Blog Author",
+    "language": "zh-CN"
+  },
+  "theme": {
+    "default": "light",
+    "primaryColor": "#6366f1",
+    "accentColor": "#818cf8"
+  },
+  "layout": {
+    "postsPerPage": 10,
+    "showCoverImage": true,
+    "cardStyle": "rounded"
+  },
+  "features": {
+    "search": true,
+    "healthCheck": true,
+    "settingsPanel": true,
+    "tagFilter": true,
+    "localLike": true
+  },
+  "footer": {
+    "copyright": "© 2025 Rin Blog. All rights reserved.",
+    "icp": "",
+    "poweredBy": "Astro + Cloudflare Pages"
+  },
+  "friends": [
+    {
+      "name": "示例友链",
+      "url": "https://example.com",
+      "description": "这是一个示例友链",
+      "avatar": ""
+    }
+  ]
+}

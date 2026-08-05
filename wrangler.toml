@@ -1,0 +1,51 @@
+# ============================================================
+# Rin Blog - Cloudflare Pages 项目配置文件
+# ============================================================
+# 部署目标：Cloudflare Pages
+# 运行时：Node.js (Pages Functions)
+# 仅允许 GET 只读接口，禁止 POST/PUT/DELETE
+# ============================================================
+
+name = "rin-blog"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+# ----------------------------------------------------------
+# D1 数据库配置
+# 用途：存放文章元数据（标题、标签、发布时间、摘要）
+# 注意：文章正文存 Markdown 编译为静态 HTML，不入 D1
+# ----------------------------------------------------------
+[[d1_databases]]
+binding = "BLOG_DB"
+database_name = "rin-blog-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+# ----------------------------------------------------------
+# KV 命名空间配置
+# 用途：存放网站全局默认配置、友链列表
+# 注意：KV 每日写入 1000 次限制，仅修改配置/友链时触发写入
+# ----------------------------------------------------------
+[[kv_namespaces]]
+binding = "BLOG_KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# ----------------------------------------------------------
+# 环境变量
+# ----------------------------------------------------------
+[vars]
+SITE_TITLE = "Rin Blog"
+SITE_DESCRIPTION = "A personal blog powered by Astro & Cloudflare Pages"
+DEFAULT_THEME = "light"
+
+# ----------------------------------------------------------
+# 开发环境配置
+# ----------------------------------------------------------
+[env.dev]
+d1_databases = [
+  { binding = "BLOG_DB", database_name = "rin-blog-db-dev", database_id = "YOUR_DEV_D1_ID" }
+]
+
+[[env.dev.kv_namespaces]]
+binding = "BLOG_KV"
+id = "YOUR_DEV_KV_ID"

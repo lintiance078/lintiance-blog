@@ -1,0 +1,61 @@
+---
+// ============================================================
+// Header - 顶部导航栏
+// 包含 Logo、导航链接、设置按钮、搜索按钮
+// ============================================================
+export interface Props {
+  currentPath?: string;
+}
+
+const { currentPath = '/' } = Astro.props;
+
+const navItems = [
+  { href: '/', label: '首页' },
+  { href: '/posts', label: '文章' },
+  { href: '/tags', label: '标签' },
+];
+
+function isActive(href: string): string {
+  if (href === '/') {
+    return currentPath === '/' ? 'active' : '';
+  }
+  return currentPath.startsWith(href) ? 'active' : '';
+}
+---
+
+<header class="site-header">
+  <div class="container">
+    <a href="/" class="site-logo">
+      Rin<span>Blog</span>
+    </a>
+
+    <nav class="header-nav">
+      {navItems.map(item => (
+        <a href={item.href} class={isActive(item.href)}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="header-actions">
+      <button
+        class="btn btn-icon"
+        id="search-trigger"
+        title="搜索 (Ctrl+K)"
+        aria-label="打开搜索"
+        onclick="document.getElementById('search-input')?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' });"
+      >
+        🔍
+      </button>
+      <button
+        class="btn btn-icon"
+        id="settings-trigger"
+        title="设置"
+        aria-label="打开设置"
+        onclick="document.getElementById('settings-panel')?.classList.add('active');document.getElementById('settings-overlay')?.classList.add('active');document.body.style.overflow='hidden'"
+      >
+        ⚙️
+      </button>
+    </div>
+  </div>
+</header>

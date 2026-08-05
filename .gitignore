@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+
+# Astro
+.astro/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Pagefind
+public/pagefind/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp files
+*.tmp
+*.swp
+*.swo
+
+# TUI state
+tui/.state.json

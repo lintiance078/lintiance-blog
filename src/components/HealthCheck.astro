@@ -1,0 +1,188 @@
+---
+// ============================================================
+// HealthCheck - 站点健康检测面板（Rin 风格）
+// 纯前端 JS 检测页面资源、链接有效性
+// 结果仅保存在浏览器 localStorage
+// ============================================================
+---
+
+<div class="health-check-panel">
+  <button
+    class="health-check-toggle"
+    id="health-check-toggle"
+    title="站点健康检测"
+    aria-label="站点健康检测"
+    onclick="document.getElementById('health-check-popup')?.classList.toggle('active')"
+  >
+    💓
+  </button>
+
+  <div class="health-check-popup" id="health-check-popup">
+    <div class="health-check-header">
+      <span>💓 站点健康检测</span>
+      <button
+        class="btn btn-icon"
+        style="width:28px;height:28px;font-size:0.8rem;"
+        onclick="document.getElementById('health-check-popup')?.classList.remove('active')"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="health-check-body" id="health-check-body">
+      <div style="text-align:center;padding:2rem;">
+        <div class="spinner" style="margin:0 auto 1rem;"></div>
+        <p style="font-size:0.85rem;color:var(--text-tertiary);">检测中...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const body = document.getElementById('health-check-body');
+
+    interface HealthResult {
+      name: string;
+      status: 'ok' | 'warn' | 'error';
+      message: string;
+    }
+
+    async function runHealthCheck(): Promise<HealthResult[]> {
+      const results: HealthResult[] = [];
+
+      // 1. 检查当前页面加载
+      const perfData = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      if (perfData) {
+        const loadTime = perfData.loadEventEnd - perfData.fetchStart;
+        results.push({
+          name: '页面加载时间',
+          status: loadTime < 3000 ? 'ok' : loadTime < 5000 ? 'warn' : 'error',
+          message: `${(loadTime / 1000).toFixed(2)}s`,
+        });
+      }
+
+      // 2. 检查关键资源加载
+      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      const failedResources = resources.filter(r => {
+        // 检查响应状态（部分浏览器支持）
+        return r.transferSize === 0 && r.duration > 0;
+      });
+      results.push({
+        name: '资源加载',
+        status: failedResources.length === 0 ? 'ok' : 'warn',
+        message: `${resources.length} 个资源，${failedResources.length} 个异常`,
+      });
+
+      // 3. 检查 API 接口
+      try {
+        const resp = await fetch('/api/config');
+        results.push({
+          name: 'API 接口',
+          status: resp.ok ? 'ok' : 'error',
+          message: resp.ok ? '正常' : `HTTP ${resp.status}`,
+        });
+      } catch {
+        results.push({
+          name: 'API 接口',
+          status: 'error',
+          message: '无法连接',
+        });
+      }
+
+      // 4. 检查 localStorage
+      try {
+        const testKey = '__rin_health_test__';
+        localStorage.setItem(testKey, '1');
+        localStorage.removeItem(testKey);
+        results.push({
+          name: 'LocalStorage',
+          status: 'ok',
+          message: '可用',
+        });
+      } catch {
+        results.push({
+          name: 'LocalStorage',
+          status: 'warn',
+          message: '不可用',
+        });
+      }
+
+      // 5. 检查 Service Worker / 缓存
+      const hasSW = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
+      results.push({
+        name: 'Service Worker',
+        status: 'ok',
+        message: hasSW ? '已激活' : '未启用',
+      });
+
+      // 6. 检查网络类型
+      if ('connection' in navigator) {
+        const conn = (navigator as any).connection;
+        results.push({
+          name: '网络类型',
+          status: conn?.effectiveType === '4g' ? 'ok' : 'warn',
+          message: conn?.effectiveType || '未知',
+        });
+      }
+
+      // 保存到 localStorage
+      try {
+        localStorage.setItem('rin_health_last', JSON.stringify({
+          timestamp: Date.now(),
+          results,
+        }));
+      } catch {}
+
+      return results;
+    }
+
+    function renderResults(results: HealthResult[]) {
+      if (!body) return;
+      body.innerHTML = results.map(r => `
+        <div class="health-item">
+          <span class="health-icon ${r.status}"></span>
+          <span class="health-item-name">${r.name}</span>
+          <span class="health-item-status">${r.message}</span>
+        </div>
+      `).join('');
+
+      // 添加检测时间
+      body.innerHTML += `
+        <div style="text-align:center;margin-top:1rem;font-size:0.75rem;color:var(--text-tertiary);">
+          检测时间: ${new Date().toLocaleString('zh-CN')}
+          <br />
+          <button
+            class="btn"
+            style="margin-top:0.5rem;font-size:0.75rem;padding:0.3rem 0.8rem;"
+            onclick="this.closest('.health-check-popup').querySelector('.health-check-body').innerHTML='<div style=\\'text-align:center;padding:2rem;\\'><div class=\\'spinner\\' style=\\'margin:0 auto 1rem;\\'></div><p style=\\'font-size:0.85rem;color:var(--text-tertiary);\\'>检测中...</p></div>';setTimeout(()=>location.reload(),100)"
+          >
+            🔄 重新检测
+          </button>
+        </div>
+      `;
+    }
+
+    // 优先展示上次缓存结果
+    try {
+      const cached = localStorage.getItem('rin_health_last');
+      if (cached) {
+        const { results, timestamp } = JSON.parse(cached);
+        renderResults(results);
+        // 更新检测时间
+        const timeEl = body?.querySelector('div:last-child');
+        if (timeEl) {
+          timeEl.innerHTML = `
+            上次检测: ${new Date(timestamp).toLocaleString('zh-CN')}
+            <br />
+            <button class="btn" style="margin-top:0.5rem;font-size:0.75rem;padding:0.3rem 0.8rem;"
+              onclick="this.closest('.health-check-popup').querySelector('.health-check-body').innerHTML='<div style=\\'text-align:center;padding:2rem;\\'><div class=\\'spinner\\' style=\\'margin:0 auto 1rem;\\'></div><p style=\\'font-size:0.85rem;color:var(--text-tertiary);\\'>检测中...</p></div>';setTimeout(()=>location.reload(),100)"
+            >🔄 重新检测</button>
+          `;
+        }
+      }
+    } catch {}
+
+    // 异步执行完整检测
+    runHealthCheck().then(renderResults);
+  })();
+</script>

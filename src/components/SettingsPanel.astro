@@ -1,0 +1,114 @@
+---
+// ============================================================
+// SettingsPanel - 侧边弹出设置面板（Rin 风格）
+// 功能：主题切换、站点参数展示
+// 优先读取 localStorage，缺失时调用 KV 接口
+// 网页不能修改 KV 全局配置
+// ============================================================
+---
+
+<div id="settings-overlay" class="settings-overlay"></div>
+
+<aside id="settings-panel" class="settings-panel">
+  <div class="settings-panel-header">
+    <h3 class="settings-panel-title">⚙️ 设置</h3>
+    <button
+      class="settings-panel-close"
+      onclick="document.getElementById('settings-panel')?.classList.remove('active');document.getElementById('settings-overlay')?.classList.remove('active');document.body.style.overflow=''"
+      aria-label="关闭设置"
+    >
+      ✕
+    </button>
+  </div>
+
+  <div class="settings-panel-body">
+    <!-- 主题切换 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">🎨 主题</h4>
+      <div class="theme-toggle-group">
+        <button
+          class="theme-btn active"
+          data-theme-value="light"
+          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.documentElement.setAttribute('data-theme','light');localStorage.setItem('rin_theme',JSON.stringify('light'))"
+        >
+          ☀️ 浅色
+        </button>
+        <button
+          class="theme-btn"
+          data-theme-value="dark"
+          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.documentElement.setAttribute('data-theme','dark');localStorage.setItem('rin_theme',JSON.stringify('dark'))"
+        >
+          🌙 深色
+        </button>
+        <button
+          class="theme-btn"
+          data-theme-value="auto"
+          onclick="document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');const m=window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.setAttribute('data-theme',m?'dark':'light');localStorage.setItem('rin_theme',JSON.stringify('auto'))"
+        >
+          🔄 自动
+        </button>
+      </div>
+    </div>
+
+    <!-- 站点信息 -->
+    <div class="settings-section">
+      <h4 class="settings-section-title">📋 站点信息</h4>
+      <div class="settings-group">
+        <div class="settings-item">
+          <span class="settings-label">站点名称</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)" id="config-site-title">Rin Blog</span>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">作者</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)" id="config-author">Blog Author</span>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">构建工具</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)">Astro</span>
+        </div>
+        <div class="settings-item">
+          <span class="settings-label">部署平台</span>
+          <span style="font-size:0.85rem;color:var(--text-secondary)">Cloudflare Pages</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 说明 -->
+    <div class="settings-section">
+      <p style="font-size:0.8rem;color:var(--text-tertiary);line-height:1.6;">
+        💡 主题偏好保存在浏览器本地。<br />
+        站点配置仅管理员可通过本地 TUI 工具修改。
+      </p>
+    </div>
+  </div>
+</aside>
+
+<script>
+  // 初始化主题按钮状态
+  (function() {
+    const stored = localStorage.getItem('rin_theme');
+    const theme = stored ? JSON.parse(stored) : 'auto';
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.themeValue === theme);
+    });
+  })();
+
+  // 异步加载站点配置
+  (async function() {
+    try {
+      const resp = await fetch('/api/config');
+      const json = await resp.json();
+      if (json.success && json.data) {
+        const site = json.data.site;
+        if (site) {
+          const titleEl = document.getElementById('config-site-title');
+          const authorEl = document.getElementById('config-author');
+          if (titleEl && site.title) titleEl.textContent = site.title;
+          if (authorEl && site.author) authorEl.textContent = site.author;
+        }
+      }
+    } catch {
+      // 接口不可用时使用默认值，静默失败
+    }
+  })();
+</script>

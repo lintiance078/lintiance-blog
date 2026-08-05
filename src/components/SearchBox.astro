@@ -1,0 +1,119 @@
+---
+// ============================================================
+// SearchBox - Pagefind 搜索组件
+// 构建期生成索引，浏览器本地全文检索
+// 索引分片，避免一次性加载大索引
+// ============================================================
+---
+
+<div class="search-container" id="search-container">
+  <div class="search-input-wrapper">
+    <span class="search-icon">🔍</span>
+    <input
+      type="search"
+      class="search-input"
+      id="search-input"
+      placeholder="搜索文章... (Ctrl+K)"
+      autocomplete="off"
+    />
+  </div>
+  <div class="pagefind-results" id="search-results"></div>
+</div>
+
+<script>
+  (function() {
+    const input = document.getElementById('search-input') as HTMLInputElement;
+    const resultsContainer = document.getElementById('search-results');
+    let pagefindInstance: any = null;
+    let debounceTimer: ReturnType<typeof setTimeout>;
+
+    // 初始化 Pagefind
+    async function initPagefind() {
+      try {
+        // 先检查 pagefind 索引是否存在
+        const checkResp = await fetch('/pagefind/pagefind.js', { method: 'HEAD' });
+        if (!checkResp.ok) {
+          throw new Error('Pagefind 索引未构建');
+        }
+        const pagefind = await import('/pagefind/pagefind.js');
+        pagefindInstance = pagefind;
+        await pagefind.options({
+          baseUrl: '/pagefind/',
+        });
+        console.log('[Pagefind] 搜索索引已加载');
+      } catch (e) {
+        // 开发模式下索引不存在是正常现象
+        if (resultsContainer) {
+          resultsContainer.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:2rem;">🔍 搜索功能将在构建后可用（npm run build）</p>';
+        }
+      }
+    }
+
+    // 执行搜索
+    async function search(query: string) {
+      if (!resultsContainer) return;
+      if (!query.trim()) {
+        resultsContainer.innerHTML = '';
+        return;
+      }
+
+      if (!pagefindInstance) {
+        resultsContainer.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:2rem;">搜索索引加载中...</p>';
+        return;
+      }
+
+      try {
+        const search = await pagefindInstance.search(query, {
+          // 分片参数
+          pageLength: 10,
+        });
+
+        if (!search || search.results.length === 0) {
+          resultsContainer.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:2rem;">未找到相关文章</p>';
+          return;
+        }
+
+        // 渲染搜索结果（最多 10 条）
+        const results = search.results.slice(0, 10);
+        const htmlPromises = results.map(async (result: any) => {
+          const data = await result.data();
+          return `
+            <div class="pagefind-result">
+              <a href="${data.url}">${data.meta?.title || data.url}</a>
+              <p>${data.excerpt || ''}</p>
+            </div>
+          `;
+        });
+
+        const htmls = await Promise.all(htmlPromises);
+        resultsContainer.innerHTML = htmls.join('');
+
+        if (search.results.length > 10) {
+          resultsContainer.innerHTML += `<p style="text-align:center;font-size:0.8rem;color:var(--text-tertiary);margin-top:0.5rem;">显示前 10 条，共 ${search.results.length} 条结果</p>`;
+        }
+      } catch (e) {
+        console.error('[Pagefind] 搜索出错:', e);
+        resultsContainer.innerHTML = '<p style="text-align:center;color:var(--text-tertiary);padding:2rem;">搜索出错，请稍后重试</p>';
+      }
+    }
+
+    // 防抖输入
+    if (input) {
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => search(input.value), 300);
+      });
+    }
+
+    // 初始化
+    initPagefind();
+
+    // 支持 URL 参数 ?q=xxx 直接搜索
+    const urlParams = new URLSearchParams(window.location.search);
+    const q = urlParams.get('q');
+    if (q && input) {
+      input.value = q;
+      search(q);
+    }
+  })();
+</script>

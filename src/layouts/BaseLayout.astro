@@ -1,0 +1,115 @@
+---
+// ============================================================
+// BaseLayout - 基础布局组件
+// 包含 HTML 骨架、全局样式、Header、Footer、设置面板、健康检测
+// ============================================================
+import Header from '@components/Header.astro';
+import Footer from '@components/Footer.astro';
+import SettingsPanel from '@components/SettingsPanel.astro';
+import HealthCheck from '@components/HealthCheck.astro';
+import '@styles/global.css';
+
+export interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+}
+
+const {
+  title = 'Rin Blog',
+  description = 'A personal blog powered by Astro & Cloudflare Pages',
+  ogImage,
+} = Astro.props;
+
+const siteUrl = Astro.site?.toString() || 'https://your-blog.pages.dev';
+const currentPath = Astro.url?.pathname || '/';
+---
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content={description} />
+  <meta name="generator" content="Astro" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={new URL(currentPath, siteUrl).href} />
+  {ogImage && <meta property="og:image" content={ogImage} />}
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" />
+
+  <!-- 预加载字体 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+
+  <title>{title}</title>
+
+  <!-- 内联主题初始化脚本：防止暗色模式闪烁 -->
+  <script is:inline>
+    (function () {
+      const stored = localStorage.getItem('rin_theme');
+      const theme = stored ? JSON.parse(stored) : 'auto';
+      if (theme === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    })();
+  </script>
+</head>
+<body>
+  <Header currentPath={currentPath} />
+
+  <main>
+    <slot />
+  </main>
+
+  <Footer />
+
+  <!-- 侧边设置面板 -->
+  <SettingsPanel />
+
+  <!-- 站点健康检测 -->
+  <HealthCheck />
+
+  <!-- 全局交互脚本 -->
+  <script>
+    import { applyTheme, getEffectiveTheme, initClickOutside, initKeyboardShortcuts } from '@lib/utils';
+    import { closeSettings } from '@lib/utils';
+
+    // 初始化主题
+    applyTheme(getEffectiveTheme());
+
+    // 监听系统主题变化
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (getEffectiveTheme() === 'auto') {
+        applyTheme('auto');
+      }
+    });
+
+    // 初始化点击外部关闭
+    initClickOutside();
+
+    // 初始化键盘快捷键
+    initKeyboardShortcuts();
+
+    // 暴露全局 API
+    (window as any).__rinBlog = {
+      applyTheme,
+      getEffectiveTheme,
+      closeSettings,
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+---
+// ============================================================
+// 文章详情页 - 动态路由 [slug]
+// 渲染 Markdown 编译的静态 HTML
+// 支持 ASCII 字符画内嵌渲染
+// ============================================================
+import BaseLayout from '@layouts/BaseLayout.astro';
+import AsciiArt from '@components/AsciiArt.astro';
+import { formatDate, parseTags, estimateReadingTime } from '@lib/utils';
+
+export async function getStaticPaths() {
+  const posts = await Astro.glob('../../content/posts/*.md');
+  return posts.map(post => ({
+    params: {
+      slug: post.frontmatter.slug || post.file.split('/').pop()?.replace('.md', '') || '',
+    },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content, frontmatter } = post;
+
+const title = frontmatter.title || 'Untitled';
+const tags = Array.isArray(frontmatter.tags) ? frontmatter.tags : [];
+const date = frontmatter.date || new Date().toISOString();
+const summary = frontmatter.summary || '';
+const wordCount = frontmatter.word_count || 0;
+const readingTime = estimateReadingTime(wordCount);
+const cover = frontmatter.cover || '';
+const coverAscii = frontmatter.cover_ascii || '';
+
+// 正文中的 ASCII 字符画通过自定义 remark 插件处理
+// 或直接在 Markdown 中包裹 <pre class="ascii-art">...</pre>
+---
+
+<BaseLayout title={`${title} - Rin Blog`} description={summary}>
+  <article class="article">
+    <header class="article-header">
+      <h1 class="article-title">{title}</h1>
+
+      <div class="article-meta">
+        <span>📅 {formatDate(date)}</span>
+        {wordCount > 0 && <span>📖 {readingTime}</span>}
+        {wordCount > 0 && <span>📝 {wordCount} 字</span>}
+      </div>
+
+      {tags.length > 0 && (
+        <div class="post-card-tags" style="justify-content:center;margin-top:1rem;">
+          {tags.map((tag: string) => (
+            <a href={`/tags/${tag}`} class="tag">{tag}</a>
+          ))}
+        </div>
+      )}
+    </header>
+
+    <!-- 封面图 -->
+    {cover && !coverAscii && (
+      <img
+        src={cover}
+        alt={title}
+        style="width:100%;max-height:400px;object-fit:cover;border-radius:var(--radius-lg);margin-bottom:2rem;"
+        loading="eager"
+      />
+    )}
+
+    <!-- ASCII 封面 -->
+    {coverAscii && (
+      <AsciiArt content={coverAscii} caption="ASCII 封面" />
+    )}
+
+    <!-- 文章正文 -->
+    <div class="article-content">
+      <Content />
+    </div>
+
+    <!-- 文章底部 -->
+    <hr style="margin:3rem 0 1.5rem;" />
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div style="display:flex;gap:0.5rem;">
+        {tags.map((tag: string) => (
+          <a href={`/tags/${tag}`} class="tag">{tag}</a>
+        ))}
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <!-- 本地收藏按钮 -->
+        <button
+          class="like-btn"
+          id="like-btn"
+          data-slug={frontmatter.slug}
+          onclick="const ls=JSON.parse(localStorage.getItem('rin_likes')||'[]');const s=this.dataset.slug;const i=ls.indexOf(s);if(i>-1){ls.splice(i,1);this.classList.remove('liked');this.innerHTML='🤍 收藏'}else{ls.push(s);this.classList.add('liked');this.innerHTML='❤️ 已收藏'};localStorage.setItem('rin_likes',JSON.stringify(ls))"
+        >
+          🤍 收藏
+        </button>
+      </div>
+    </div>
+  </article>
+
+  <script>
+    // 初始化收藏按钮状态
+    (function() {
+      const btn = document.getElementById('like-btn');
+      if (!btn) return;
+      const slug = btn.dataset.slug;
+      const likes = JSON.parse(localStorage.getItem('rin_likes') || '[]');
+      if (likes.includes(slug)) {
+        btn.classList.add('liked');
+        btn.innerHTML = '❤️ 已收藏';
+      }
+    })();
+  </script>
+</BaseLayout>

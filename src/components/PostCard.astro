@@ -1,0 +1,78 @@
+---
+// ============================================================
+// PostCard - 文章卡片组件（Rin 风格）
+// 展示封面图/ASCII封面、标签、标题、摘要、日期、字数
+// ============================================================
+import { formatDate, parseTags, estimateReadingTime } from '@lib/utils';
+
+export interface Props {
+  slug: string;
+  title: string;
+  summary: string;
+  tags: string;
+  cover_image: string;
+  is_ascii: number;
+  created_at: string;
+  word_count: number;
+}
+
+const {
+  slug,
+  title,
+  summary,
+  tags,
+  cover_image,
+  is_ascii,
+  created_at,
+  word_count,
+} = Astro.props;
+
+const tagList = parseTags(tags);
+const readingTime = estimateReadingTime(word_count);
+---
+
+<article class="post-card animate-in">
+  <a href={`/posts/${slug}`} class="post-card-link" style="display:contents;color:inherit;">
+    {
+      cover_image ? (
+        is_ascii ? (
+          <div class="post-card-cover-placeholder">
+            <span>🎨</span>
+          </div>
+        ) : (
+          <img
+            class="post-card-cover"
+            src={cover_image}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+          />
+        )
+      ) : (
+        <div class="post-card-cover-placeholder">
+          <span>📝</span>
+        </div>
+      )
+    }
+
+    <div class="post-card-body">
+      {tagList.length > 0 && (
+        <div class="post-card-tags">
+          {tagList.slice(0, 3).map(tag => (
+            <span class="tag">{tag}</span>
+          ))}
+          {tagList.length > 3 && <span class="tag">+{tagList.length - 3}</span>}
+        </div>
+      )}
+
+      <h3 class="post-card-title">{title}</h3>
+
+      {summary && <p class="post-card-summary">{summary}</p>}
+
+      <div class="post-card-meta">
+        <span>📅 {formatDate(created_at)}</span>
+        {word_count > 0 && <span>📖 {readingTime}</span>}
+      </div>
+    </div>
+  </a>
+</article>
