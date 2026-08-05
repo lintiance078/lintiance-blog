@@ -1849,6 +1849,31 @@ html.minimal-mode[data-theme="dark"] .health-check-section {
   border-left: 3px solid var(--color-primary);
 }
 
+.hacker-gate-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0.5rem;
+  justify-content: center;
+}
+
+.hacker-gate-key-input {
+  flex: 1;
+  max-width: 260px;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.hacker-gate-key-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
 /* 黑客模式下的 gate 隐藏 */
 html.hacker-mode .hacker-post-gate {
   display: none;
@@ -1878,6 +1903,23 @@ html.hacker-mode .hacker-gate-hint {
   border-left-color: var(--hacker-fg);
   color: var(--hacker-fg-dim) !important;
   font-family: var(--hacker-font);
+}
+
+html.hacker-mode .hacker-gate-key-input {
+  background: var(--hacker-bg);
+  border: 2px solid var(--hacker-border-dim);
+  color: var(--hacker-fg);
+  font-family: var(--hacker-font);
+  border-radius: 0;
+}
+
+html.hacker-mode .hacker-gate-key-input:focus {
+  border-color: var(--hacker-fg);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+html.hacker-mode .hacker-gate-key-input::placeholder {
+  color: var(--hacker-fg-dim);
 }
 
 /* 简约模式下的 gate */
