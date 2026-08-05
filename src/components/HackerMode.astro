@@ -133,6 +133,8 @@ const keyHash = djb2Hash(secretKey);
     // 切换到黑客模式
     function activateHackerMode() {
       document.documentElement.classList.add('hacker-mode');
+      // 持久化到 sessionStorage，跨页面导航保持，关闭标签页失效
+      sessionStorage.setItem('hacker_mode', 'true');
       // 隐藏 loading 标识
       const indicator = document.getElementById('hacker-loading-indicator');
       if (indicator) indicator.remove();
@@ -193,13 +195,38 @@ const keyHash = djb2Hash(secretKey);
       return false;
     };
 
+    // 页面加载时：从 sessionStorage 恢复黑客模式状态
+    // 刷新页面时退出黑客模式，页面跳转时保持
+    function restoreHackerMode() {
+      const navEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+      const isReload = navEntry && navEntry.type === 'reload';
+
+      if (isReload) {
+        // 刷新页面 → 退出黑客模式
+        sessionStorage.removeItem('hacker_mode');
+        document.documentElement.classList.remove('hacker-mode', 'hacker-minimal');
+        filterPostsByMode('normal');
+        return;
+      }
+
+      if (sessionStorage.getItem('hacker_mode') === 'true') {
+        document.documentElement.classList.add('hacker-mode');
+        if (document.documentElement.classList.contains('minimal-mode')) {
+          document.documentElement.classList.add('hacker-minimal');
+        }
+        filterPostsByMode('hacker');
+      } else {
+        filterPostsByMode('normal');
+      }
+    }
+
     // 初始化
     setTimeout(initTrigger, 1000);
-    // 页面加载时初始化文章过滤
+    // 页面加载时恢复黑客模式 + 初始化文章过滤
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initPostFilter);
+      document.addEventListener('DOMContentLoaded', restoreHackerMode);
     } else {
-      initPostFilter();
+      restoreHackerMode();
     }
   })();
 </script>
