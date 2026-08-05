@@ -45,8 +45,18 @@ const isHackerPost = post.file.includes('hacker-posts');
         <div class="hacker-gate-icon">🔒</div>
         <h2>访问受限</h2>
         <p>此内容需要通过隐秘模式验证后才能查看。</p>
-        <p class="hacker-gate-hint">在设置面板中连续点击站点名称 5 次，然后在搜索框中输入密钥。</p>
-        <a href="/" class="btn btn-primary" style="margin-top:1rem;">返回首页</a>
+        <div class="hacker-gate-input-row">
+          <input
+            type="password"
+            id="hacker-gate-key-input"
+            class="hacker-gate-key-input"
+            placeholder="输入密钥..."
+            autocomplete="off"
+          />
+          <button id="hacker-gate-submit" class="btn btn-primary">验证</button>
+        </div>
+        <p id="hacker-gate-error" style="color:#ff3333;display:none;margin-top:0.5rem;">密钥错误，请重试</p>
+        <a href="/" class="btn btn-outline" style="margin-top:1rem;">返回首页</a>
       </div>
     </div>
   )}
@@ -133,6 +143,18 @@ const isHackerPost = post.file.includes('hacker-posts');
       const gate = document.getElementById('hacker-post-gate');
       if (!article || !gate) return;
 
+      // djb2 哈希（与 HackerMode 组件一致）
+      function djb2Hash(str) {
+        let hash = 5381;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+        }
+        return hash >>> 0;
+      }
+
+      const hashEl = document.getElementById('hacker-key-hash');
+      const STORED_HASH = parseInt(hashEl ? hashEl.getAttribute('data-hash') || '0' : '0');
+
       // 检查是否已激活黑客模式
       function checkHackerMode() {
         const isHackerMode = document.documentElement.classList.contains('hacker-mode');
@@ -151,6 +173,44 @@ const isHackerPost = post.file.includes('hacker-posts');
       // 监听黑客模式切换（MutationObserver）
       const observer = new MutationObserver(checkHackerMode);
       observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+      // 门禁输入框验证
+      const keyInput = document.getElementById('hacker-gate-key-input');
+      const submitBtn = document.getElementById('hacker-gate-submit');
+      const errorEl = document.getElementById('hacker-gate-error');
+
+      function tryVerifyKey() {
+        const key = keyInput ? keyInput.value.trim() : '';
+        if (!key) {
+          // 未输入密钥 → 跳回首页（正常模式）
+          window.location.href = '/';
+          return;
+        }
+
+        const inputHash = djb2Hash(key);
+        if (inputHash === STORED_HASH && STORED_HASH !== 0) {
+          // 密钥正确 → 激活黑客模式
+          document.documentElement.classList.add('hacker-mode');
+          sessionStorage.setItem('hacker_mode', 'true');
+          checkHackerMode();
+        } else {
+          // 密钥错误 → 显示错误，然后跳回首页
+          if (errorEl) errorEl.style.display = '';
+          if (keyInput) keyInput.value = '';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        }
+      }
+
+      if (submitBtn) {
+        submitBtn.addEventListener('click', tryVerifyKey);
+      }
+      if (keyInput) {
+        keyInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') tryVerifyKey();
+        });
+      }
     })();
   </script>
 </BaseLayout>
