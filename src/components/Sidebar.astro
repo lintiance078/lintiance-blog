@@ -47,11 +47,11 @@ const allTags = [...normalTags, ...hackerTags].sort((a, b) => b.count - a.count)
       <div class="sidebar-about">
         <p class="sidebar-about-text">林天策的个人博客，记录技术、生活与思考。</p>
         <div class="sidebar-stats">
-          <div class="sidebar-stat">
+          <div class="sidebar-stat" data-stat-type="normal">
             <span class="sidebar-stat-num" id="sidebar-normal-count">{normalPosts.length}</span>
             <span class="sidebar-stat-label">普通文章</span>
           </div>
-          <div class="sidebar-stat">
+          <div class="sidebar-stat" data-stat-type="hacker">
             <span class="sidebar-stat-num" id="sidebar-hacker-count">{hackerPosts.length}</span>
             <span class="sidebar-stat-label">隐秘文章</span>
           </div>
@@ -84,8 +84,8 @@ const allTags = [...normalTags, ...hackerTags].sort((a, b) => b.count - a.count)
     function filterSidebarTags() {
       const isHackerMode = document.documentElement.classList.contains('hacker-mode');
       const tagItems = document.querySelectorAll('#sidebar-tags .sidebar-tag-item');
-      const normalCount = document.getElementById('sidebar-normal-count');
-      const hackerCount = document.getElementById('sidebar-hacker-count');
+      const normalStat = document.querySelector('[data-stat-type="normal"]') as HTMLElement;
+      const hackerStat = document.querySelector('[data-stat-type="hacker"]') as HTMLElement;
 
       tagItems.forEach((item: Element) => {
         const el = item as HTMLElement;
@@ -97,16 +97,14 @@ const allTags = [...normalTags, ...hackerTags].sort((a, b) => b.count - a.count)
         }
       });
 
-      // 高亮对应计数
-      if (normalCount && hackerCount) {
+      // 正常模式隐藏隐秘文章统计，黑客模式隐藏普通文章统计
+      if (normalStat && hackerStat) {
         if (isHackerMode) {
-          normalCount.style.opacity = '0.5';
-          hackerCount.style.opacity = '1';
-          hackerCount.style.color = 'var(--color-primary)';
+          normalStat.style.display = 'none';
+          hackerStat.style.display = '';
         } else {
-          normalCount.style.opacity = '1';
-          normalCount.style.color = 'var(--color-primary)';
-          hackerCount.style.opacity = '0.5';
+          normalStat.style.display = '';
+          hackerStat.style.display = 'none';
         }
       }
     }
