@@ -49,3 +49,6 @@ project_local_path.txt
 
 # Self-check reports (auto-generated)
 oneclick_scripts/*/check_report_*.txt
+
+# Docs (local only, not deployed)
+docs/
